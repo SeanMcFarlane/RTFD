@@ -12,7 +12,6 @@ namespace parallel {
 	void set_bnd ( uint32_t N, uint32_t b, float * x )
 	{
 		uint32_t i;
-		//DPRINT("set_bnd begin\n");
 		for ( i=1 ; i<=N ; i++ ) {
 			x[ZIX(0  ,i)] = b==1 ? -x[ZIX(1,i)] : x[ZIX(1,i)];
 			x[ZIX(N+1,i)] = b==1 ? -x[ZIX(N,i)] : x[ZIX(N,i)];
@@ -23,16 +22,14 @@ namespace parallel {
 		x[ZIX(0  ,N+1)] = 0.5f*(x[ZIX(1,N+1)]+x[ZIX(0  ,N)]);
 		x[ZIX(N+1,0  )] = 0.5f*(x[ZIX(N,0  )]+x[ZIX(N+1,1)]);
 		x[ZIX(N+1,N+1)] = 0.5f*(x[ZIX(N,N+1)]+x[ZIX(N+1,N)]);
-		//DPRINT("set_bnd end\n");
 	}
 
 	void lin_solve ( uint32_t N, uint32_t b, float * x, float * x0, float a, float c )
 	{
-		//DPRINT("lin_solve begin\n");
 		uint32_t i, j, k, zX, zY;
 		for ( k=0 ; k<20 ; k++ ) { 
+		#pragma omp parallel for
 			for( zY=0; zY<zonesInRow; zY++){
-				#pragma omp parallel for num_threads( 4 )
 				for( zX=0; zX<zonesInRow; zX++){
 					for ( j=zY*zoneLen; j<(zY+1)*zoneLen; j++ ) {
 						for ( i=zX*zoneLen; i<(zX+1)*zoneLen; i++ ) { 
@@ -42,12 +39,8 @@ namespace parallel {
 					}
 				}
 			}
-			// FOR_EACH_CELL
-			// 	x[ZIX(i, j)] = (x0[ZIX(i, j)] + a * (x[ZIX(i - 1, j)] + x[ZIX(i + 1, j)] + x[ZIX(i, j - 1)] + x[ZIX(i, j + 1)])) / c;
-			// END_FOR
 			parallel::set_bnd ( N, b, x );
 		}
-		//DPRINT("lin_solve end\n");
 	}
 
 	void diffuse ( uint32_t N, uint32_t b, float * x, float * x0, float diff, float dt )

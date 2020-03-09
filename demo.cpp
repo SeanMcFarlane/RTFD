@@ -108,29 +108,6 @@ static void init_sfml(uint32_t resolution)
 	g_clock = new sf::Clock();
 }
 
-/*
-static void key_func(unsigned char key, uint32_t x, uint32_t y)
-{
-	switch (key)
-	{
-	case 'c':
-	case 'C':
-		clear_data();
-		break;
-
-	case 'q':
-	case 'Q':
-		free_data();
-		exit(0);
-		break;
-
-	case 'v':
-	case 'V':
-		dvel = !dvel;
-		break;
-	}
-}
-*/
 static void mouse_func(uint32_t id, bool pressed)
 {
 	mouse_down[id] = pressed;
@@ -149,35 +126,11 @@ static void motion_func()
 	my = mPos.y;
 }
 
-/*static void draw_density ( void )
+static void draw_density ( void )
 {
-	uint32_t i, j;
-	float x, y, h, d00, d01, d10, d11;
-
-	h = 1.0f/N;
-
-	glBegin ( GL_QUADS );
-
-		for ( i=0 ; i<=N ; i++ ) {
-			x = (i-0.5f)*h;
-			for ( j=0 ; j<=N ; j++ ) {
-				y = (j-0.5f)*h;
-
-				d00 = dens[ZIX(i,j)];
-				d01 = dens[ZIX(i,j+1)];
-				d10 = dens[ZIX(i+1,j)];
-				d11 = dens[ZIX(i+1,j+1)];
-
-				glColor3f ( d00, d00, d00 ); glVertex2f ( x, y );
-				glColor3f ( d10, d10, d10 ); glVertex2f ( x+h, y );
-				glColor3f ( d11, d11, d11 ); glVertex2f ( x+h, y+h );
-				glColor3f ( d01, d01, d01 ); glVertex2f ( x, y+h );
-			}
-		}
-
-	glEnd ();
+	// Density rendering not yet implemented
 }
-*/
+
 
 static void get_from_UI(float *d, float *u, float *v)
 {
@@ -294,7 +247,6 @@ static void GameLoop(){
 				}
 			}
 		}
-		//glutKeyboardFunc(key_func);
 
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
 		{
@@ -303,7 +255,7 @@ static void GameLoop(){
 
 		get_from_UI(dens_prev, u_prev, v_prev);
 	
-		//DPRINT("Iteration "<< iterations <<"\n");
+		DPRINT("Iteration "<< iterations <<"\n");
 		switch(optim_mode){
 			case 0:
 			{
@@ -365,8 +317,7 @@ namespace opt
 		for( zY=0; zY<zonesInRow; zY++){
 			for( zX=0; zX<zonesInRow; zX++){
 				for ( j=zY*zoneLen; j<(zY+1)*zoneLen; j++ ) {
-					//DPRINT("RENDERLOOP: (zY+1)*zoneLen = (" << (zY+1)*zoneLen <<")\n");
-					for ( i=zX*zoneLen; i<(zX+1)*zoneLen; i++ ) { 
+=					for ( i=zX*zoneLen; i<(zX+1)*zoneLen; i++ ) { 
 						if(i <= 0 || j <= 0 || i >= N || j >= N){
 							DPRINT("RENDERLOOP: (" << i << "," << j <<") OMITTED\n");	
 							#ifdef DISPLAY_COORDS				
@@ -390,13 +341,9 @@ namespace opt
 						uint32_t index = 2 * zix;
 						DPRINT("RENDERLOOP: (" << i << "," << j <<")="<< index <<"\n");
 						
-						//DPRINT("PRE-HIT\n");
-
 						hit[index] = true;
 						hit[index+1] = true;
 						hits++;
-
-						//DPRINT(" POST-HIT\n");
 
 						float xStep = (float)resolution/N;
 						float yStep = (float)resolution/N;
@@ -417,7 +364,6 @@ namespace opt
 						line[index].color.g = 128;
 						line[index+1].position = sf::Vector2f(xPos + xOffset,  yPos + yOffset);
 						line[index+1].color = line[index].color;
-						//DPRINT(" POST-LINE+1\n");
 						#ifdef DISPLAY_COORDS
 						texts[zix] = sf::Text(sf::String("("+std::to_string(i)+","+std::to_string(j)+")"), *font);
 						texts[zix].setCharacterSize(11);
@@ -437,7 +383,6 @@ namespace opt
 			}
 		}
 
-		DPRINT("About to clear window \n");
 		window->clear();
 		DPRINT("Cleared window \n");
 		#ifdef DISPLAY_COORDS
@@ -552,9 +497,7 @@ int main ( int argc, char ** argv )
 	win_x = resolution;
 	win_y = resolution;
 
-	//DPRINT("Max index of ZIX: " << ZIX(N, N) << "\nMax size of array:" << (N+2)*(N+2) << ".\n");
-	//FOR_EACH_ZONE();
-	//return 0;
+	DPRINT("Max index of ZIX: " << ZIX(N, N) << "\nMax size of array:" << (N+2)*(N+2) << ".\n");
 
 	if (profiling)
 	{
