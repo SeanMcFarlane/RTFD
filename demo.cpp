@@ -317,7 +317,7 @@ namespace opt
 		for( zY=0; zY<zonesInRow; zY++){
 			for( zX=0; zX<zonesInRow; zX++){
 				for ( j=zY*zoneLen; j<(zY+1)*zoneLen; j++ ) {
-=					for ( i=zX*zoneLen; i<(zX+1)*zoneLen; i++ ) { 
+					for ( i=zX*zoneLen; i<(zX+1)*zoneLen; i++ ) { 
 						if(i <= 0 || j <= 0 || i >= N || j >= N){
 							DPRINT("RENDERLOOP: (" << i << "," << j <<") OMITTED\n");	
 							#ifdef DISPLAY_COORDS				
