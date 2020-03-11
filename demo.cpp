@@ -24,8 +24,11 @@ static float dt, diff, visc;
 static float force, source;
 static uint32_t dvel;
 
-static float * u, * v, * u_prev, * v_prev;
-static float * dens, * dens_prev;
+//static float * u, * v, * u_prev, * v_prev;
+//static float * dens, * dens_prev;
+
+static float __attribute__ ((aligned(16))) *u, *v, *u_prev, *v_prev;
+static float __attribute__ ((aligned(16))) *dens, *dens_prev;
 
 static uint32_t win_id;
 static int win_x, win_y;
@@ -41,6 +44,7 @@ const uint32_t frameRate = 60;
 const float visLen = 30.0f;
 const uint32_t resolution = 512;
 uint32_t iterations;
+uint32_t cur_iter = 0;
 uint32_t N;
 
 bool profiling;
@@ -51,7 +55,7 @@ int optim_mode;
    free/clear/allocate simulation data
   ----------------------------------------------------------------------
 */
-
+/*
 static void free_data ( void )
 {
 	if ( u ) free ( u );
@@ -61,7 +65,7 @@ static void free_data ( void )
 	if ( dens ) free ( dens );
 	if ( dens_prev ) free ( dens_prev );
 }
-
+*/
 static void clear_data ( void )
 {
 	uint32_t i, size=(N+2)*(N+2);
@@ -69,8 +73,9 @@ static void clear_data ( void )
 	for ( i=0 ; i<size ; i++ ) {
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
 	}
+	DPRINT("Data cleared\n");
 }
-
+/*
 static uint32_t allocate_data ( void )
 {
 	uint32_t size = (N+2)*(N+2);
@@ -89,7 +94,45 @@ static uint32_t allocate_data ( void )
 
 	return ( 1 );
 }
+*/
 
+static uint32_t allocate_data_simd ( void )
+{
+	DPRINT("ALLOCATING DATA SIMD\n");
+	uint32_t size = (N+2)*(N+2);
+
+	u 			= (float*)_mm_malloc(size*(sizeof(float)), 16);
+	v 			= (float*)_mm_malloc(size*(sizeof(float)), 16);
+	u_prev 		= (float*)_mm_malloc(size*(sizeof(float)), 16);
+	v_prev 		= (float*)_mm_malloc(size*(sizeof(float)), 16);
+	dens 		= (float*)_mm_malloc(size*(sizeof(float)), 16);
+	dens_prev 	= (float*)_mm_malloc(size*(sizeof(float)), 16);
+	// assert(!posix_memalign ((void**)&u, 16,  ));
+	// assert(!posix_memalign ((void**)&v, 16, size*(sizeof(float)) ));
+	// assert(!posix_memalign ((void**)&u_prev, 16, size*(sizeof(float))));
+	// assert(!posix_memalign ((void**)&v_prev, 16, size*(sizeof(float))));
+	// assert(!posix_memalign ((void**)&dens, 16, size*(sizeof(float))));
+	// assert(!posix_memalign ((void**)&dens_prev, 16, size*(sizeof(float))));
+	
+	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
+		fprintf ( stderr, "cannot allocate data\n" );
+		return ( 0 );
+	}
+
+	DPRINT("ALLOCATED DATA SIMD SUCCESSFULLY\n");
+
+	return ( 1 );
+}
+
+static void clear_data_simd ( void )
+{
+	uint32_t i, size=(N+2)*(N+2);
+
+	for ( i=0 ; i<size ; i++ ) {
+		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
+	}
+	DPRINT("Data cleared\n");
+}
 
 /*
   ----------------------------------------------------------------------
@@ -178,8 +221,8 @@ static void get_from_UI(float *d, float *u, float *v)
 
 static void ProfileLoop()
 {
-	while(iterations > 0){
-		iterations--;
+	while(cur_iter < iterations){
+		cur_iter++;
 		switch(optim_mode){
 			case 0:
 			{
@@ -206,6 +249,14 @@ static void ProfileLoop()
 				opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
 				parallel::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 				parallel::dens_step(N, dens, dens_prev, u, v, diff, dt);
+				break;
+			}
+			case 3: // SIMD (IX)
+			{
+				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
+				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				break;
 			}
 		}
@@ -254,10 +305,10 @@ static void GameLoop(){
 		}
 
 		get_from_UI(dens_prev, u_prev, v_prev);
-	
-		DPRINT("Iteration "<< iterations <<"\n");
+		cur_iter++;
+		DPRINT("Iteration "<< cur_iter <<"\n");
 		switch(optim_mode){
-			case 0:
+			case 0: // Unoptimized
 			{
 				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
 				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
@@ -266,7 +317,7 @@ static void GameLoop(){
 				base::render_velocity();
 				break;
 			}
-			case 1:
+			case 1: // Single core optimized (ZIX)
 			{
 				opt::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
 				opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
@@ -275,13 +326,22 @@ static void GameLoop(){
 				opt::render_velocity();
 				break;
 			}
-			case 2:
+			case 2: // Parallelized (ZIX)
 			{
 				opt::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
 				opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
 				parallel::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 				parallel::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				opt::render_velocity();
+				break;
+			}
+			case 3: // SIMD (IX)
+			{
+				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
+				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
+				base::render_velocity();
 				break;
 			}
 		}
@@ -491,13 +551,13 @@ int main ( int argc, char ** argv )
 
 	dvel = 0;
 
-	if ( !allocate_data () ) return 1;
-	clear_data ();
+	if (!allocate_data_simd()) return 1;
+	clear_data();
 
 	win_x = resolution;
 	win_y = resolution;
 
-	DPRINT("Max index of ZIX: " << ZIX(N, N) << "\nMax size of array:" << (N+2)*(N+2) << ".\n");
+	//DPRINT("Max index of ZIX: " << ZIX(N, N) << "\nMax size of array:" << (N+2)*(N+2) << ".\n");
 
 	if (profiling)
 	{

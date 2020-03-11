@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <cmath>
 #include <omp.h>    // for multi-core parallelism
+#include "nmmintrin.h" // for SSE4.2
+#include "immintrin.h" // for AVX
 
 #define IX(i,j) ((i)+(N+2)*(j))
 #define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
@@ -33,7 +35,7 @@ extern int optim_mode;
 const uint32_t zoneLen = 4;
 const uint32_t zoneSize = 16;
 const uint32_t divShift = 2; //Bit shift amount to perform division
-const uint32_t zonesInRow = 16; //Should be equal to N/zoneLen.
+const uint32_t zonesInRow = 32; //Should be equal to N/zoneLen.
 
 static const uint32_t ZIX(const uint32_t x, const uint32_t y)
 {
@@ -63,6 +65,7 @@ namespace parallel{
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
 	void render_velocity();
+    void set_bnd(uint32_t N, uint32_t b, float *x);
 }
 
 namespace opt{
@@ -70,6 +73,7 @@ namespace opt{
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
 	void render_velocity();
+    void set_bnd(uint32_t N, uint32_t b, float *x);
 }
 
 namespace base{
@@ -77,4 +81,13 @@ namespace base{
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
 	void render_velocity();
-} // namespace opt
+    void set_bnd(uint32_t N, uint32_t b, float *x);
+} // namespace base
+
+namespace SIMD{
+    void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
+    void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
+    void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
+	void render_velocity();
+    void set_bnd(uint32_t N, uint32_t b, float *x);
+} // namespace SIMD
