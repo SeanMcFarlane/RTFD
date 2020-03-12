@@ -64,6 +64,7 @@ namespace parallel{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
+    void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
     void set_bnd(uint32_t N, uint32_t b, float *x);
 }
@@ -72,6 +73,7 @@ namespace opt{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
+    void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
     void set_bnd(uint32_t N, uint32_t b, float *x);
 }
@@ -80,6 +82,7 @@ namespace base{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
+    void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
     void set_bnd(uint32_t N, uint32_t b, float *x);
 } // namespace base
@@ -88,6 +91,7 @@ namespace SIMD{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
+    void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
     void set_bnd(uint32_t N, uint32_t b, float *x);
 } // namespace SIMD

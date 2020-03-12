@@ -2,30 +2,6 @@
 
 namespace SIMD { // SIMD implementation
 
-	/*
-	void simd_rshift2(__m128 &_t1, const __m128 _t2)
-	{ // 0123 4567
-		_t1 =_mm_shuffle_ps( _t1, _t2, _MM_SHUFFLE(2,3,0,1)); // 2345		
-	}
-
-	void simd_rshift1(__m128 &_t1, const __m128 _t2)
-	{ // 0123 2345
-		const __m128 temp = _t1;
-		simd_rshift2(_t1, _t2); // 2345
-		_t1 = _mm_shuffle_ps( temp, _t1, _MM_SHUFFLE(1,2,1,2)); // 1234
-	}
-
-	void simd_lshift2(const __m128 _t0, __m128 &_t1)
-	{ //-4-3-2-1 0123
-		_t1 = _mm_shuffle_ps( _t0, _t1, _MM_SHUFFLE(2,3,0,1)); // -2,-1,0,1		
-	}
-
-	void simd_lshift1(const __m128 _t0, __m128 &_t1)
-	{ //-4-3-2-1 0123
-		simd_lshift2(_t0, _t1); // -2,-1,0,1
-		_t1 = _mm_shuffle_ps( _t0, _t1, _MM_SHUFFLE(1,2,1,2)); // -1,0,1,2
-	}
-	*/
 	#ifdef DEBUG_LOG
 	void printm128(const __m128 val){
 		float __attribute__ ((aligned(16))) *output = (float*)_mm_malloc(4*(sizeof(float)), 16);
@@ -37,9 +13,12 @@ namespace SIMD { // SIMD implementation
 		DPRINT("\n");
 	}
 	#else
-	void printm128(const __m128 val){
-	}
+	void printm128(const __m128 val){}
 	#endif
+
+	/*
+		SIMD 128 index shift functions
+	*/
 
 	static const __m128 simd_rshift2(const __m128 _t1, const __m128 _t2)
 	{ // 0123 4567
@@ -112,27 +91,34 @@ namespace SIMD { // SIMD implementation
 	}
 
 	/*
-		Potential improvements:
-		- Retain mid1&mid2 to reuse next iteration
+		Potential improvements for SIMD solution:
+		- SIMD'ify advect and project
 	*/
 
 	void lin_solve(uint32_t N, uint32_t b, float *x, float *x0, float a, float c)
 	{
+		float cInv = 1.0f/c;
 		__m128 _a = _mm_set_ps(a,a,a,a);
-		__m128 _c = _mm_set_ps(c,c,c,c);
+		__m128 _c = _mm_set_ps(cInv,cInv,cInv,cInv);
 		//m128_test();
 		uint32_t i, j, k;
+
+
 		for (k = 0; k < 20; k++)
 		{
-			#pragma omp parallel for
+			//#pragma omp parallel for
 			for ( j=1; j<=N; j++ ) { 
+				__m128 mid0;
+				__m128 mid1 = _mm_load_ps( &( x[IX(0, j)] ) );
+				__m128 mid2 = _mm_load_ps( &( x[IX(4, j)] ) );
+
 				for ( i=4; i<=N-4; i+=4 ) {
 					DPRINT("i,j=("<<i<<","<<j<<")\n");
 					DPRINT("IX(i,j)="<<IX(i,j)<<"\n");
 
-					__m128 const mid0 = _mm_load_ps( &( x[IX(i-4, j)] ) );
-					__m128 const mid1 = _mm_load_ps( &( x[IX(i, j)] ) );
-					__m128 const mid2 = _mm_load_ps( &( x[IX(i+4, j)] ) );
+					mid0 = mid1;
+					mid1 = mid2;
+					mid2 =_mm_load_ps( &( x[IX(i+4, j)] ) );
 
 					__m128 const center = _mm_load_ps( &( x0[IX(i, j)] ) );
 
@@ -150,7 +136,7 @@ namespace SIMD { // SIMD implementation
 
 					__m128 const scaledAdj = _mm_mul_ps(_a, adjacents);
 					__m128 const numerator = _mm_add_ps(center, scaledAdj);
-					__m128 const result =  _mm_div_ps(numerator, _c);
+					__m128 const result =  _mm_mul_ps(numerator, _c);
 
 					_mm_store_ps( &(x[IX(i, j)]), result);
 					
@@ -202,7 +188,39 @@ namespace SIMD { // SIMD implementation
 	void project(uint32_t N, float *u, float *v, float *p, float *div)
 	{
 		uint32_t i, j;
+		float mul = -0.5f;
+		const __m128 multiplier = _mm_set_ps(mul,mul,mul,mul);
+		const __m128 N128 = _mm_set_ps(N,N,N,N);
+		const __m128 zeroes = _mm_setzero_ps();
+		for ( j=1; j<=N; j++ ) { 
 
+			__m128 u0;
+			__m128 u1 = _mm_load_ps( &( u[IX(0, j)] ) );
+			__m128 u2 = _mm_load_ps( &( u[IX(4, j)] ) );
+
+			for ( i=4; i<=N-4; i+=4 ) {
+				u0=u1;
+				u1=u2;
+				u2 = _mm_load_ps( &( u[IX(i+4, j)] ) );
+
+				const __m128 vAbove = _mm_load_ps( &( u[IX(i, j+1)] ) );
+				const __m128 vBelow = _mm_load_ps( &( u[IX(i, j-1)] ) );
+				
+				const __m128 ul = simd_lshift1(u0, u1);
+				const __m128 ur = simd_rshift1(u1, u2);
+
+				const __m128 uDiff = _mm_sub_ps(ur, ul);
+				const __m128 vDiff = _mm_sub_ps(vAbove, vBelow);
+
+				const __m128 sum = _mm_add_ps(uDiff, vDiff);
+				const __m128 result = _mm_mul_ps(sum, multiplier);
+				const __m128 result2 = _mm_div_ps(result, N128);
+				//const __m128 resultF = _mm_floor_ps(result);
+				_mm_store_ps( &(div[IX(i, j)]), result2);
+				_mm_store_ps( &(p[IX(i, j)]), zeroes);
+			}
+		}
+		
 		FOR_EACH_CELL
 			div[IX(i, j)] = -0.5f * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]) / N;
 			p[IX(i, j)] = 0;
@@ -237,7 +255,7 @@ namespace SIMD { // SIMD implementation
 		SIMD::diffuse(N, 1, u, u0, visc, dt);
 		SWAP(v0, v);
 		SIMD::diffuse(N, 2, v, v0, visc, dt);
-		SIMD::project(N, u, v, u0, v0);
+		base::project(N, u, v, u0, v0);
 		SWAP(u0, u);
 		SWAP(v0, v);
 		SIMD::advect(N, 1, u, u0, u0, v0, dt);

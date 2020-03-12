@@ -224,7 +224,15 @@ static void ProfileLoop()
 	while(cur_iter < iterations){
 		cur_iter++;
 		switch(optim_mode){
-			case 0:
+			case 0: // SIMD (IX)
+			{
+				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
+				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
+				break;
+			}
+			case 1:
 			{
 				// Constant force is added each iteration to demonstrate simulation without needing input.
 				base::add_force(N / 4, N / 4, 100.0f, 0); 
@@ -233,7 +241,7 @@ static void ProfileLoop()
 				base::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				break;
 			}
-			case 1:
+			case 2:
 			{
 				// Constant force is added each iteration to demonstrate simulation without needing input.
 				opt::add_force(N / 4, N / 4, 100.0f, 0); 
@@ -242,21 +250,13 @@ static void ProfileLoop()
 				opt::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				break;
 			}
-			case 2:
+			case 3:
 			{
 				// Constant force is added each iteration to demonstrate simulation without needing input.
 				opt::add_force(N / 4, N / 4, 100.0f, 0); 
 				opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
 				parallel::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 				parallel::dens_step(N, dens, dens_prev, u, v, diff, dt);
-				break;
-			}
-			case 3: // SIMD (IX)
-			{
-				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
-				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
-				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
-				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				break;
 			}
 		}
@@ -308,7 +308,16 @@ static void GameLoop(){
 		cur_iter++;
 		DPRINT("Iteration "<< cur_iter <<"\n");
 		switch(optim_mode){
-			case 0: // Unoptimized
+			case 0: // SIMD (IX)
+			{
+				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
+				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
+				base::render_velocity();
+				break;
+			}
+			case 1: // Unoptimized
 			{
 				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
 				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
@@ -317,7 +326,7 @@ static void GameLoop(){
 				base::render_velocity();
 				break;
 			}
-			case 1: // Single core optimized (ZIX)
+			case 2: // Single core optimized (ZIX)
 			{
 				opt::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
 				opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
@@ -326,22 +335,13 @@ static void GameLoop(){
 				opt::render_velocity();
 				break;
 			}
-			case 2: // Parallelized (ZIX)
+			case 3: // Parallelized (ZIX)
 			{
 				opt::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
 				opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
 				parallel::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 				parallel::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				opt::render_velocity();
-				break;
-			}
-			case 3: // SIMD (IX)
-			{
-				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
-				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
-				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
-				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
-				base::render_velocity();
 				break;
 			}
 		}
