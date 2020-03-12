@@ -9,10 +9,11 @@
 #include "nmmintrin.h" // for SSE4.2
 #include "immintrin.h" // for AVX
 
-#define IX(i,j) ((i)+(N+2)*(j))
+#define IX(i,j) ((i)+(N+bnd)*(j))
 #define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
-#define FOR_EACH_CELL for ( i=1 ; i<=N; i++ ) { for ( j=1 ; j<=N; j++ ) {
+#define FOR_EACH_CELL for ( j=bnd/2; j<N+(bnd/2); j++ ) { for ( i=bnd/2 ; i<N+(bnd/2); i++ ) { 
 #define END_FOR }}
+#define FOR_EACH_CELL_FULL for ( j=0; j<N+bnd; j++ ) { for ( i=0 ; i<N+bnd; i++ ) { 
 //#define DEBUG_LOG
 //#define DISPLAY_COORDS
 #ifdef DEBUG_LOG 
@@ -28,7 +29,8 @@ extern const uint32_t frameRate;
 extern const float visLen;
 extern const uint32_t resolution;
 extern uint32_t iterations;
-extern uint32_t N; //Note to self: Making N const does not improve performance.
+extern uint32_t N; 
+extern uint32_t bnd;
 
 extern bool profiling;
 extern int optim_mode;
@@ -94,4 +96,6 @@ namespace SIMD{
     void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
     void set_bnd(uint32_t N, uint32_t b, float *x);
+    void m128_test();
+    void m128_test2(float *test);
 } // namespace SIMD

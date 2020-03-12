@@ -28,8 +28,6 @@ namespace SIMD { // SIMD implementation
 	static const __m128 simd_rshift1(const __m128 _t1, const __m128 _t2)
 	{ // 0123 2345
 		__m128 const shift2 = simd_rshift2(_t1, _t2); // 2345
-		//DPRINT("RSHIFT2 ");
-		//printm128(shift2);
 		return _mm_shuffle_ps( _t1, shift2, _MM_SHUFFLE(2,1,2,1)); // 1234 (X, 1, 2, X) (X, 4, 3, X)
 	}
 
@@ -41,8 +39,6 @@ namespace SIMD { // SIMD implementation
 	static const __m128 simd_lshift1(const __m128 _t0, const __m128 _t1)
 	{ //-4-3-2-1 0123
 		__m128 const shift2 = simd_lshift2(_t0, _t1); // -2,-1,0,1
-		//DPRINT("LSHIFT2 ");
-		//printm128(shift2);
 		return _mm_shuffle_ps( shift2, _t1, _MM_SHUFFLE(2,1,2,1)); // -1,0,1,2
 	}
 
@@ -57,17 +53,17 @@ namespace SIMD { // SIMD implementation
 	{
 		uint32_t i;
 
-		for (i = 1; i <= N; i++)
+		for (i = 4; i < N+4; i++)
 		{
-			x[IX(0, i)] = b == 1 ? -x[IX(1, i)] : x[IX(1, i)];
-			x[IX(N + 1, i)] = b == 1 ? -x[IX(N, i)] : x[IX(N, i)];
-			x[IX(i, 0)] = b == 2 ? -x[IX(i, 1)] : x[IX(i, 1)];
-			x[IX(i, N + 1)] = b == 2 ? -x[IX(i, N)] : x[IX(i, N)];
+			x[IX(3, i)] = b == 1 ? -x[IX(4, i)] : x[IX(4, i)];
+			x[IX(N+4, i)] = b == 1 ? -x[IX(N+3, i)] : x[IX(N+3, i)];
+			x[IX(i, 3)] = b == 2 ? -x[IX(i, 4)] : x[IX(i, 4)];
+			x[IX(i, N+4)] = b == 2 ? -x[IX(i, N+3)] : x[IX(i, N+3)];
 		}
-		x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
-		x[IX(0, N + 1)] = 0.5f * (x[IX(1, N + 1)] + x[IX(0, N)]);
-		x[IX(N + 1, 0)] = 0.5f * (x[IX(N, 0)] + x[IX(N + 1, 1)]);
-		x[IX(N + 1, N + 1)] = 0.5f * (x[IX(N, N + 1)] + x[IX(N + 1, N)]);
+		x[IX(3, 3)] = 0.5f * (x[IX(4, 3)] + x[IX(3, 4)]);
+		x[IX(3, N + 4)] = 0.5f * (x[IX(4, N+4)] + x[IX(3, N+3)]);
+		x[IX(N+4, 3)] = 0.5f * (x[IX(N+3,3)] + x[IX(N+4, 4)]);
+		x[IX(N+4, N+4)] = 0.5f * (x[IX(N+3, N+4)] + x[IX(N+4, N+3)]);
 	}
 
 	void m128_test(){
@@ -90,6 +86,81 @@ namespace SIMD { // SIMD implementation
 		printm128(lshift1);
 	}
 
+	void m128_test2(float* test){
+		uint32_t i, j;
+		uint32_t lastJ;
+		
+		FOR_EACH_CELL_FULL
+			test[IX(i,j)] = 0.0f;
+		END_FOR
+
+		FOR_EACH_CELL
+			test[IX(i,j)] = (float)IX(i,j);
+		END_FOR
+
+		FOR_EACH_CELL_FULL
+			if(j != lastJ){lastJ = j; std::cout << "\n";}
+			float num = test[IX(i,j)];
+			if(num < __FLT_EPSILON__){
+				std::cout <<"### ";
+			}
+			else if(num < 10){
+				std::cout <<"00"<< test[IX(i,j)] << " ";
+			}
+			else if(num < 100){
+				std::cout <<"0"<< test[IX(i,j)] << " ";
+			}
+			else{
+				std::cout << test[IX(i,j)] << " ";
+			}
+		END_FOR
+		std::cout << "\n";
+		for ( j=4; j<=N+4; j++ ) { 
+			__m128 mid0;
+			__m128 mid1 = _mm_load_ps( &( test[IX(0, j)] ) );
+			__m128 mid2 = _mm_load_ps( &( test[IX(4, j)] ) );
+
+			for ( i=4; i<=N+4; i+=4 ) {
+				//DPRINT("i,j=("<<i<<","<<j<<")\n");
+				//DPRINT("IX(i,j)="<<IX(i,j)<<"\n");
+
+				mid0 = mid1;
+				mid1 = mid2;
+				mid2 =_mm_load_ps( &( test[IX(i+4, j)] ) );
+
+				//__m128 const left = simd_lshift2(mid0, mid1);
+				__m128 const right = simd_rshift1(mid1, mid2);
+
+				//DPRINT("All loads work!\n")
+
+				_mm_store_ps( &(test[IX(i, j)]), right);
+				
+				//DPRINT("SIMD lin_solve success.\n");
+
+			}
+		}
+		std::cout << test[IX(i,j)] << "\n\n\n\n";
+		FOR_EACH_CELL_FULL
+			if(j != lastJ){lastJ = j; std::cout << "\n";}
+			float num = test[IX(i,j)];
+			if(num < __FLT_EPSILON__){
+				std::cout <<"### ";
+			}
+			else if(num < 10){
+				std::cout <<"00"<< test[IX(i,j)] << " ";
+			}
+			else if(num < 100){
+				std::cout <<"0"<< test[IX(i,j)] << " ";
+			}
+			else{
+				std::cout << test[IX(i,j)] << " ";
+			}
+			//std::cout << "("<< IX(i,j) <<","<< test[IX(i,j)] << ") ";
+			//std::cout << "("<< IX(i,j) - test[IX(i,j)] << ") ";
+		END_FOR
+
+	}
+
 	/*
 		Potential improvements for SIMD solution:
 		- SIMD'ify advect and project
@@ -102,17 +173,14 @@ namespace SIMD { // SIMD implementation
 		__m128 _c = _mm_set_ps(cInv,cInv,cInv,cInv);
 		//m128_test();
 		uint32_t i, j, k;
-
-
 		for (k = 0; k < 20; k++)
 		{
-			//#pragma omp parallel for
-			for ( j=1; j<=N; j++ ) { 
+			for ( j=4; j<=N+4; j++ ) { 
 				__m128 mid0;
 				__m128 mid1 = _mm_load_ps( &( x[IX(0, j)] ) );
 				__m128 mid2 = _mm_load_ps( &( x[IX(4, j)] ) );
 
-				for ( i=4; i<=N-4; i+=4 ) {
+				for ( i=4; i<=N+4; i+=4 ) {
 					DPRINT("i,j=("<<i<<","<<j<<")\n");
 					DPRINT("IX(i,j)="<<IX(i,j)<<"\n");
 
@@ -188,41 +256,45 @@ namespace SIMD { // SIMD implementation
 	void project(uint32_t N, float *u, float *v, float *p, float *div)
 	{
 		uint32_t i, j;
-		float mul = -0.5f;
-		const __m128 multiplier = _mm_set_ps(mul,mul,mul,mul);
-		const __m128 N128 = _mm_set_ps(N,N,N,N);
-		const __m128 zeroes = _mm_setzero_ps();
-		for ( j=1; j<=N; j++ ) { 
-
-			__m128 u0;
-			__m128 u1 = _mm_load_ps( &( u[IX(0, j)] ) );
-			__m128 u2 = _mm_load_ps( &( u[IX(4, j)] ) );
-
-			for ( i=4; i<=N-4; i+=4 ) {
-				u0=u1;
-				u1=u2;
-				u2 = _mm_load_ps( &( u[IX(i+4, j)] ) );
-
-				const __m128 vAbove = _mm_load_ps( &( u[IX(i, j+1)] ) );
-				const __m128 vBelow = _mm_load_ps( &( u[IX(i, j-1)] ) );
-				
-				const __m128 ul = simd_lshift1(u0, u1);
-				const __m128 ur = simd_rshift1(u1, u2);
-
-				const __m128 uDiff = _mm_sub_ps(ur, ul);
-				const __m128 vDiff = _mm_sub_ps(vAbove, vBelow);
-
-				const __m128 sum = _mm_add_ps(uDiff, vDiff);
-				const __m128 result = _mm_mul_ps(sum, multiplier);
-				const __m128 result2 = _mm_div_ps(result, N128);
-				//const __m128 resultF = _mm_floor_ps(result);
-				_mm_store_ps( &(div[IX(i, j)]), result2);
-				_mm_store_ps( &(p[IX(i, j)]), zeroes);
-			}
-		}
 		
+		// float mul = -0.5f;
+		// const __m128 multiplier = _mm_set_ps(mul,mul,mul,mul);
+		// const __m128 N128 = _mm_set_ps(N,N,N,N);
+		// const __m128 zeroes = _mm_setzero_ps();
+		// for ( j=4; j<=N+4; j++ ) { 
+
+		// 	__m128 u0;
+		// 	__m128 u1 = _mm_load_ps( &( u[IX(0, j)] ) );
+		// 	__m128 u2 = _mm_load_ps( &( u[IX(4, j)] ) );
+
+		// 	for ( i=4; i<=N+4; i+=4 ) {
+		// 		u0=u1;
+		// 		u1=u2;
+		// 		u2 = _mm_load_ps( &( u[IX(i+4, j)] ) );
+
+		// 		const __m128 vAbove = _mm_load_ps( &( u[IX(i, j+1)] ) );
+		// 		const __m128 vBelow = _mm_load_ps( &( u[IX(i, j-1)] ) );
+				
+		// 		const __m128 ul = simd_lshift1(u0, u1);
+		// 		const __m128 ur = simd_rshift1(u1, u2);
+
+		// 		const __m128 uDiff = _mm_sub_ps(ur, ul);
+		// 		const __m128 vDiff = _mm_sub_ps(vAbove, vBelow);
+
+		// 		const __m128 sum = _mm_add_ps(uDiff, vDiff);
+		// 		const __m128 result = _mm_mul_ps(sum, multiplier);
+		// 		const __m128 result2 = _mm_div_ps(result, N128);
+		// 		_mm_store_ps( &(div[IX(i, j)]), result2);
+		// 		_mm_store_ps( &(p[IX(i, j)]), zeroes);
+		// 	}
+		// }
+		const float mul = -0.5f/(float)N;
 		FOR_EACH_CELL
-			div[IX(i, j)] = -0.5f * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]) / N;
+			const float sub1 = u[IX(i + 1, j)] - u[IX(i - 1, j)];
+			const float sub2 = v[IX(i, j + 1)] - v[IX(i, j - 1)];
+			const float sum = sub1 + sub2;
+			const float result = sum * mul;
+		 	div[IX(i, j)] = result;
 			p[IX(i, j)] = 0;
 		END_FOR
 		SIMD::set_bnd(N, 0, div);
@@ -255,7 +327,7 @@ namespace SIMD { // SIMD implementation
 		SIMD::diffuse(N, 1, u, u0, visc, dt);
 		SWAP(v0, v);
 		SIMD::diffuse(N, 2, v, v0, visc, dt);
-		base::project(N, u, v, u0, v0);
+		SIMD::project(N, u, v, u0, v0);
 		SWAP(u0, u);
 		SWAP(v0, v);
 		SIMD::advect(N, 1, u, u0, u0, v0, dt);

@@ -27,8 +27,9 @@ static uint32_t dvel;
 //static float * u, * v, * u_prev, * v_prev;
 //static float * dens, * dens_prev;
 
-static float __attribute__ ((aligned(16))) *u, *v, *u_prev, *v_prev;
-static float __attribute__ ((aligned(16))) *dens, *dens_prev;
+float __attribute__ ((aligned(16))) *u, *v, *u_prev, *v_prev;
+float __attribute__ ((aligned(16))) *dens, *dens_prev;
+float __attribute__ ((aligned(16))) *test;
 
 static uint32_t win_id;
 static int win_x, win_y;
@@ -46,6 +47,7 @@ const uint32_t resolution = 512;
 uint32_t iterations;
 uint32_t cur_iter = 0;
 uint32_t N;
+uint32_t bnd;
 
 bool profiling;
 int optim_mode;
@@ -68,7 +70,7 @@ static void free_data ( void )
 */
 static void clear_data ( void )
 {
-	uint32_t i, size=(N+2)*(N+2);
+	uint32_t i, size=(N+bnd)*(N+bnd);
 
 	for ( i=0 ; i<size ; i++ ) {
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
@@ -78,7 +80,7 @@ static void clear_data ( void )
 /*
 static uint32_t allocate_data ( void )
 {
-	uint32_t size = (N+2)*(N+2);
+	uint32_t size = (N+bnd)*(N+bnd);
 
 	u			= (float *) malloc ( size*sizeof(float) );
 	v			= (float *) malloc ( size*sizeof(float) );
@@ -99,7 +101,7 @@ static uint32_t allocate_data ( void )
 static uint32_t allocate_data_simd ( void )
 {
 	DPRINT("ALLOCATING DATA SIMD\n");
-	uint32_t size = (N+2)*(N+2);
+	uint32_t size = (N+bnd)*(N+bnd);
 
 	u 			= (float*)_mm_malloc(size*(sizeof(float)), 16);
 	v 			= (float*)_mm_malloc(size*(sizeof(float)), 16);
@@ -107,6 +109,7 @@ static uint32_t allocate_data_simd ( void )
 	v_prev 		= (float*)_mm_malloc(size*(sizeof(float)), 16);
 	dens 		= (float*)_mm_malloc(size*(sizeof(float)), 16);
 	dens_prev 	= (float*)_mm_malloc(size*(sizeof(float)), 16);
+	test 		= (float*)_mm_malloc(size*(sizeof(float)), 16);
 	// assert(!posix_memalign ((void**)&u, 16,  ));
 	// assert(!posix_memalign ((void**)&v, 16, size*(sizeof(float)) ));
 	// assert(!posix_memalign ((void**)&u_prev, 16, size*(sizeof(float))));
@@ -126,7 +129,7 @@ static uint32_t allocate_data_simd ( void )
 
 static void clear_data_simd ( void )
 {
-	uint32_t i, size=(N+2)*(N+2);
+	uint32_t i, size=(N+bnd)*(N+bnd);
 
 	for ( i=0 ; i<size ; i++ ) {
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
@@ -226,8 +229,8 @@ static void ProfileLoop()
 		switch(optim_mode){
 			case 0: // SIMD (IX)
 			{
-				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
-				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				SIMD::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
 				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				break;
@@ -257,6 +260,14 @@ static void ProfileLoop()
 				opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
 				parallel::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 				parallel::dens_step(N, dens, dens_prev, u, v, diff, dt);
+				break;
+			}
+			case 4: // SIMD again
+			{
+				SIMD::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				SIMD::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
+				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
 				break;
 			}
 		}
@@ -310,11 +321,11 @@ static void GameLoop(){
 		switch(optim_mode){
 			case 0: // SIMD (IX)
 			{
-				base::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
-				base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				SIMD::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
 				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
-				base::render_velocity();
+				SIMD::render_velocity();
 				break;
 			}
 			case 1: // Unoptimized
@@ -344,6 +355,15 @@ static void GameLoop(){
 				opt::render_velocity();
 				break;
 			}
+			case 4: // SIMD again
+			{
+				SIMD::add_force(N / 4, N / 4, 100.0f, 0); // Constant force is added each iteration to demonstrate simulation without needing input.
+				SIMD::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+				SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
+				SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
+				SIMD::render_velocity();
+				break;
+			}
 		}
 	}
 }
@@ -361,7 +381,7 @@ namespace opt
 		sf::Vertex line[2*(N+2)*(N+2)];
 		DPRINT("1\n");
 		#ifdef DISPLAY_COORDS
-		sf::Text texts[(N+2)*(N+2)];
+		sf::Text texts[(N+bnd)*(N+bnd)];
 		#endif
 		DPRINT("2\n");
 		bool hit[2*(N+2)*(N+2)];
@@ -502,6 +522,54 @@ namespace base
 	}
 } // namespace base
 
+namespace SIMD
+{
+	void add_force(uint32_t i, uint32_t j, float xForce, float yForce){
+		if (i < 1 || i > N || j < 1 || j > N)
+			return;
+		u[IX(i, j)] += dt * xForce;
+		v[IX(i, j)] += dt * yForce;
+	}
+	void render_velocity(){
+		sf::Vertex line[2*N*N];
+		for(uint32_t y = 4; y<N+4; y++){
+			for(uint32_t x = 4; x<N+4; x++){
+
+				uint32_t indY = y-4;
+				uint32_t indX = x-4;
+				uint32_t index = 2*(indX+(indY*N));
+
+				DPRINT("("<<indX<<","<<indY<<")="<<index<<"\n");
+
+				float xStep = (float)resolution/N;
+				float yStep = (float)resolution/N;
+
+				float xPos = xStep * ((float)indX + 0.5f);
+				float yPos = yStep * ((float)indY + 0.5f);
+				float xPerc = (float)indX / (float)N;
+				float yPerc = (float)indY / (float)N;				
+
+				float xOffset = u[IX(x, N+7-y)]*visLen;
+				float yOffset = v[IX(x, N+7-y)]*visLen;
+				float colInterp = (abs(xOffset)+abs(yOffset))/(visLen*0.5f);
+				colInterp = colInterp <= 1 ? colInterp : 1.0f;
+
+				line[index].color.r = 255*colInterp;
+				line[index].color.b = 255*(1-colInterp);
+				line[index].color.g = 128;
+				
+				line[index].position = sf::Vector2f(xPos, yPos);
+
+				line[index+1].position = sf::Vector2f(xPos+xOffset, yPos+yOffset);
+				line[index+1].color = line[index].color;
+			}
+		}
+		window->clear();
+		window->draw(line, 2 * N * N, sf::PrimitiveType::Lines);
+		window->display();
+	}
+} // namespace SIMD
+
 /*
   ----------------------------------------------------------------------
    main --- main routine
@@ -512,22 +580,27 @@ int main ( int argc, char ** argv )
 {
 
 	if ( argc != 1 && argc != 5 ) {
-		fprintf ( stderr, "Usage: demo.exe <profiling mode[0,1]> <use optimizations[0,1]> <resolution[int]> <iterations[int]>\n");
+		fprintf ( stderr, "Usage: demo.exe <profiling mode[0-1]> <select implementation[0-4]> <resolution[int]> <iterations[int]>\n");
 		return 1;
 	}
 
 	if ( argc == 1 ) {
 		profiling = false;
-		optim_mode = false;
-		N = 126;
-		iterations = 600;
-		fprintf ( stderr, "Using defaults: visualizer mode, unoptim_mode, 128x128\n");
+		optim_mode = 0;
+		N = 256;
+		iterations = 1000;
+		fprintf ( stderr, "Using defaults: visualizer mode, SIMD, 128x128\n");
 	} else {
 		profiling = atoi(argv[1]) > 0 ? true : false;
 		optim_mode = atoi(argv[2]);
-		N = atoi(argv[3])-2;
+		N = atoi(argv[3]);
 		iterations = atoi(argv[4]);
 	}
+
+	if(optim_mode==0||optim_mode==4){bnd = 8;}
+	else{bnd = 2;}
+	N-=bnd;
+	
 	timeSpeed = 1.0f;
 	diff = 0.0f;
 	visc = 0.0f;
@@ -559,6 +632,9 @@ int main ( int argc, char ** argv )
 
 	//DPRINT("Max index of ZIX: " << ZIX(N, N) << "\nMax size of array:" << (N+2)*(N+2) << ".\n");
 
+	//SIMD::m128_test();
+	//SIMD::m128_test2(test);
+	//return 0;
 	if (profiling)
 	{
 		dt = timeSpeed / 60.0f;
