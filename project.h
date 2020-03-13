@@ -1,7 +1,6 @@
 #pragma once
 
 #define _USE_MATH_DEFINES
-#include <SFML/Graphics.hpp>
 #include <iostream>
 #include <assert.h>
 #include <cmath>
@@ -22,8 +21,6 @@
 #define DPRINT(str)
 #endif
 
-extern sf::RenderWindow *window;
-extern sf::Clock *g_clock;
 extern float timeSpeed;
 extern const uint32_t frameRate;
 extern const float visLen;
@@ -37,7 +34,7 @@ extern int optim_mode;
 const uint32_t zoneLen = 4;
 const uint32_t zoneSize = 16;
 const uint32_t divShift = 2; //Bit shift amount to perform division
-const uint32_t zonesInRow = 32; //Should be equal to N/zoneLen.
+const uint32_t zonesInRow = 64; //Should be equal to N/zoneLen.
 
 static const uint32_t ZIX(const uint32_t x, const uint32_t y)
 {

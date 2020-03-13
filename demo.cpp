@@ -1,21 +1,22 @@
 /*
   ======================================================================
-   demo.c --- protoype to show off the simple solver
+   demo.cpp - SFML-enabled version of the demo that provides visual feedback
   ----------------------------------------------------------------------
-   Author : Jos Stam (jstam@aw.sgi.com)
-   Creation Date : Jan 9 2003
+   Author : Sean Mcfarlane
+   Creation Date : Jan 2019
 
    Description:
 
-	This code is a simple prototype that demonstrates how to use the
-	code provided in my GDC2003 paper entitles "Real-Time Fluid Dynamics
-	for Games". This code uses OpenGL and GLUT for graphics and interface
+    This project was created based on the paper "Real-Time Fluid Dynamics for Games" by Jos Stam.
+    Code is a modified version of the sample code provided alongside the paper, which was adapted to use C++ and SFML rather than C and OpenGL.
+    This was created for the purpose of testing optimization methods as part of my CSC485C coursework.
 
   =======================================================================
 */
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <SFML/Graphics.hpp>
 #include "project.h"
 
 /* global variables */

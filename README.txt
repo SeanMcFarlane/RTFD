@@ -7,7 +7,6 @@ Experiment setup code can be found in demo.cpp
 Global variables and indexing functions can be found in project.h
 
 LAUNCH OPTIONS: ./demo.exe [profiling mode (0,1)] [implementation (0,1,2,3)] [resolution] [iterations]
-
 Implementation options are as follows:
 0 - SIMD (IX)
 1 - Base (IX)
@@ -17,6 +16,9 @@ Implementation options are as follows:
 
 REQUIRED PACKAGES: 
 libsfml-dev
+
+An SFML-free version is included in the project, for when you don't need any GUI and just want to profile 
+performance. To use this version, execute demo_prof.exe instead.
 
 [1] Stam, Jos. (2003). Real-Time Fluid Dynamics for Games. 
 https://www.researchgate.net/publication/2560062_Real-Time_Fluid_Dynamics_for_Games

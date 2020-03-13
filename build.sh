@@ -1,11 +1,13 @@
 #!/bin/bash
 
 g++ -c -fopenmp -mavx -O3 -g demo.cpp
+g++ -c -fopenmp -mavx -O3 -g demo_prof.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_Base.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_Opt.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_Parallel.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_SIMD.cpp
 g++ -fopenmp -mavx -O3 -g demo.o RTFD_Base.o RTFD_Opt.o RTFD_Parallel.o RTFD_SIMD.o -o demo.exe -lsfml-graphics -lsfml-window -lsfml-system
+g++ -fopenmp -mavx -O3 -g demo_prof.o RTFD_Base.o RTFD_Opt.o RTFD_Parallel.o RTFD_SIMD.o -o demo_prof.exe
 rm *.o
 
 #x86_64-w64-mingw32-g++ -c -static -static-libgcc -static-libstdc++ -DSFML_STATIC -fopenmp -mavx -g demo.cpp
