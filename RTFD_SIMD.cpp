@@ -331,8 +331,7 @@ namespace SIMD_PARA { // SIMD and multithreaded implementation
 		- SIMD'ify advect and project
 	*/
 
-	//#pragma omp parallel
-	void lin_solve(uint32_t N, uint32_t b, float *__restrict__ x, float *__restrict__ x0, float a, float c)
+	void lin_solve(const uint32_t N, const uint32_t b, float *__restrict__ x, float *__restrict__ x0, const float a, const float c)
 	{
 		const float cInv = 1.0f/c;
 		const __m128 _a = _mm_set_ps(a,a,a,a);
@@ -340,7 +339,7 @@ namespace SIMD_PARA { // SIMD and multithreaded implementation
 		uint32_t i, j, k;
 		for (k = 0; k < 20; k++)
 		{
-			#pragma omp parallelfor schedule(static, 8)
+			#pragma omp parallel for default(none) firstprivate( i, N, b, bnd, x0, x) schedule(static,128)
 			for ( j=4; j<=N+4; j++ ) { 
 				__m128 mid0;
 				__m128 mid1 = _mm_load_ps( &( x[IX(0, j)] ) );
@@ -378,10 +377,7 @@ namespace SIMD_PARA { // SIMD and multithreaded implementation
 
 				}
 			}
-			#pragma omp single
-			{
-				SIMD::set_bnd(N, b, x);
-			}
+			SIMD::set_bnd(N, b, x);
 		}
 	}
 
@@ -471,39 +467,39 @@ namespace SIMD_PARA { // SIMD and multithreaded implementation
 		SIMD_PARA::advect(N, 2, v, v0, u0, v0, dt);
 		SIMD_PARA::project(N, u, v, u0, v0);
 	}
-	/*
-	void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt)
-	{
-		#pragma omp parallel
-		{
-			if(omp_get_thread_num() == 0)
-			{
-				SIMD_PARA::add_source(N, u, u0, dt);
-				SWAP(u0, u);
-				SIMD_PARA::diffuse(N, 1, u, u0, visc, dt);
-			}
-			if(omp_get_thread_num() == 1)
-			{
-				SIMD_PARA::add_source(N, v, v0, dt);				
-				SWAP(v0, v);
-				SIMD_PARA::diffuse(N, 2, v, v0, visc, dt);
-			}
-		}
-		SIMD_PARA::project(N, u, v, u0, v0);
-		SWAP(u0, u);
-		SWAP(v0, v);
-		#pragma omp parallel
-		{
-			if(omp_get_thread_num() == 0)
-			{
-				SIMD_PARA::advect(N, 1, u, u0, u0, v0, dt);
-			}
-			if(omp_get_thread_num() == 1)
-			{
-				SIMD_PARA::advect(N, 2, v, v0, u0, v0, dt);
-			}
-		}
-		SIMD_PARA::project(N, u, v, u0, v0);
-	}
-	*/
+	
+	// void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt)
+	// {
+	// 	#pragma omp parallel
+	// 	{
+	// 		if(omp_get_thread_num() == 0)
+	// 		{
+	// 			SIMD::add_source(N, u, u0, dt);
+	// 			SWAP(u0, u);
+	// 			SIMD_PARA::diffuse(N, 1, u, u0, visc, dt);
+	// 		}
+	// 		if(omp_get_thread_num() == 1)
+	// 		{
+	// 			SIMD::add_source(N, v, v0, dt);				
+	// 			SWAP(v0, v);
+	// 			SIMD_PARA::diffuse(N, 2, v, v0, visc, dt);
+	// 		}
+	// 	}
+	// 	SIMD_PARA::project(N, u, v, u0, v0);
+	// 	SWAP(u0, u);
+	// 	SWAP(v0, v);
+	// 	#pragma omp parallel
+	// 	{
+	// 		if(omp_get_thread_num() == 0)
+	// 		{
+	// 			SIMD_PARA::advect(N, 1, u, u0, u0, v0, dt);
+	// 		}
+	// 		if(omp_get_thread_num() == 1)
+	// 		{
+	// 			SIMD_PARA::advect(N, 2, v, v0, u0, v0, dt);
+	// 		}
+	// 	}
+	// 	SIMD_PARA::project(N, u, v, u0, v0);
+	// }
+	
 }

@@ -42,7 +42,7 @@ int optim_mode;
 const uint32_t zoneLen = 4;
 const uint32_t zoneSize = 16;
 const uint32_t divShift = 2; //Bit shift amount to perform division
-const uint32_t zonesInRow = 64; //Should be equal to N/zoneLen.
+const uint32_t zonesInRow = 128; //Should be equal to N/zoneLen.
 
 /*
   ----------------------------------------------------------------------

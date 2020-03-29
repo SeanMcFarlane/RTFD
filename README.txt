@@ -17,6 +17,8 @@ Implementation options are as follows:
 REQUIRED PACKAGES: 
 libsfml-dev
 
+Linux is strongly recommended for testing this project.
+
 An SFML-free version is included in the project, for when you don't need any GUI and just want to profile 
 performance. To use this version, execute demo_prof.exe instead.
 
