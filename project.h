@@ -20,21 +20,27 @@
 #else
 #define DPRINT(str)
 #endif
+#define UNUSED(x) (void)(x)
 
+extern float dt, diff, visc;
+extern float force, source;
+extern float __attribute__ ((aligned(16))) *u, *v, *u_prev, *v_prev;
+extern float __attribute__ ((aligned(16))) *dens, *dens_prev;
+extern float __attribute__ ((aligned(16))) *test;
 extern float timeSpeed;
 extern const uint32_t frameRate;
-extern const float visLen;
 extern const uint32_t resolution;
 extern uint32_t iterations;
-extern uint32_t N; 
+extern uint32_t cur_iter;
+extern uint32_t N;
 extern uint32_t bnd;
-
+extern uint32_t pad;
 extern bool profiling;
 extern int optim_mode;
-const uint32_t zoneLen = 4;
-const uint32_t zoneSize = 16;
-const uint32_t divShift = 2; //Bit shift amount to perform division
-const uint32_t zonesInRow = 64; //Should be equal to N/zoneLen.
+extern const uint32_t zoneLen;
+extern const uint32_t zoneSize;
+extern const uint32_t divShift; //Bit shift amount to perform division
+extern const uint32_t zonesInRow; //Should be equal to N/zoneLen.
 
 static const uint32_t ZIX(const uint32_t x, const uint32_t y)
 {
@@ -46,9 +52,9 @@ static const uint32_t ZIX(const uint32_t x, const uint32_t y)
     #ifdef DEBUG_LOG
     //DPRINT("Result (" << x << ", " << y << ")=[" << result << "]\n");
     const uint32_t result = (zoneIndexc * zoneSize) + localXc + (localYc * zoneLen);
-    if(result < 0 || result > (N+2)*(N+2))
+    if(result < 0 || result > (N+bnd)*(N+bnd))
     {
-        DPRINT("Result [" << result << "] is outside of range ["<<(N+2)*(N+2)<<"]!\n");
+        DPRINT("Result [" << result << "] is outside of range ["<<(N+bnd)*(N+bnd)<<"]!\n");
         DPRINT("\n(x,y)=(" << x << ", " << y << ")\n");
         DPRINT("Zone (" << zoneXc << ", " << zoneYc << ")\n");
         DPRINT("LocalXY (" << localXc << ", " << localYc << ")\n");
@@ -96,3 +102,18 @@ namespace SIMD{
     void m128_test();
     void m128_test2(float *test);
 } // namespace SIMD
+
+namespace SIMD_PARA{
+    void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
+    void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
+    void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
+    void project(uint32_t N, float *u, float *v, float *p, float *div);
+	void render_velocity();
+    void set_bnd(uint32_t N, uint32_t b, float *x);
+    void m128_test();
+    void m128_test2(float *test);
+} // namespace SIMD_PARA
+
+void Simulate(uint32_t optim_mode);
+void clear_data();
+uint32_t allocate_data_simd();

@@ -1,8 +1,5 @@
-#!/bin/bash
+scp -r ../RTFD_2 seanmcf@13.88.243.86:~/
 
 ssh -i ~/.ssh/id_rsa seanmcf@13.88.243.86
 
 
-scp ./RTFD_2 seanmcf@~/RTFD_2
-
-scp -r ./RTFD_2 seanmcf@13.88.243.86:~/RTFD_2

@@ -1,19 +1,13 @@
 #!/bin/bash
 
-g++ -c -fopenmp -mavx -O3 -g demo.cpp
-g++ -c -fopenmp -mavx -O3 -g demo_prof.cpp
+g++ -c -fopenmp -mavx -O3 -g demo_core.cpp
+g++ -c -fopenmp -mavx -O3 -g demo_perf.cpp
+g++ -c -fopenmp -mavx -O3 -g demo_render.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_Base.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_Opt.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_Parallel.cpp
 g++ -c -fopenmp -mavx -O3 -g RTFD_SIMD.cpp
-g++ -fopenmp -mavx -O3 -g demo.o RTFD_Base.o RTFD_Opt.o RTFD_Parallel.o RTFD_SIMD.o -o demo.exe -lsfml-graphics -lsfml-window -lsfml-system
-g++ -fopenmp -mavx -O3 -g demo_prof.o RTFD_Base.o RTFD_Opt.o RTFD_Parallel.o RTFD_SIMD.o -o demo_prof.exe
+g++ -fopenmp -mavx -O3 -g demo_core.o demo_render.o RTFD_Base.o RTFD_Opt.o RTFD_Parallel.o RTFD_SIMD.o -o demo_render.exe -lsfml-graphics -lsfml-window -lsfml-system
+g++ -fopenmp -mavx -O3 -g demo_core.o demo_perf.o RTFD_Base.o RTFD_Opt.o RTFD_Parallel.o RTFD_SIMD.o -o demo_perf.exe
 rm *.o
-
-#x86_64-w64-mingw32-g++ -c -static -static-libgcc -static-libstdc++ -DSFML_STATIC -fopenmp -mavx -g demo.cpp
-#x86_64-w64-mingw32-g++ -c -static -static-libgcc -static-libstdc++ -DSFML_STATIC -fopenmp -mavx -g RTFD_Base.cpp
-#x86_64-w64-mingw32-g++ -c -static -static-libgcc -static-libstdc++ -DSFML_STATIC -fopenmp -mavx -g RTFD_Opt.cpp
-#x86_64-w64-mingw32-g++ -c -static -static-libgcc -static-libstdc++ -DSFML_STATIC -fopenmp -mavx -g RTFD_Parallel.cpp
-#x86_64-w64-mingw32-g++ -c -static -static-libgcc -static-libstdc++ -DSFML_STATIC -fopenmp -mavx -g RTFD_SIMD.cpp
-#x86_64-w64-mingw32-g++ -static -static-libgcc -static-libstdc++ -DSFML_STATIC -fopenmp -mavx -g demo.o RTFD_Base.o RTFD_Opt.o RTFD_Parallel.o RTFD_SIMD.o -o Windows/demo_windows.exe -lsfml-graphics -lsfml-window -lsfml-system
-#rm *.o
+echo "Build complete ✓"
