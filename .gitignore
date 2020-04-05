@@ -1,3 +1,5 @@
 # Compiled source #
 ###################
 *.o
+/SFML
+/.vs/

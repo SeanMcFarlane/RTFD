@@ -31,7 +31,7 @@ float __attribute__ ((aligned(16))) *dens, *dens_prev;
 float __attribute__ ((aligned(16))) *test;
 float timeSpeed;
 const uint32_t frameRate = 60;
-const uint32_t resolution = 512;
+const uint32_t resolution = 1024;
 uint32_t iterations;
 uint32_t cur_iter = 0;
 uint32_t N;

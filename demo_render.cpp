@@ -201,7 +201,8 @@ namespace opt
 {
 	void render_velocity(){
 		DPRINT("render_velocity begin\n");
-		sf::Vertex line[2*(N+2)*(N+2)];
+		sf::VertexArray line(sf::Lines, 2 * (N + 2) * (N + 2));
+
 		DPRINT("1\n");
 		#ifdef DISPLAY_COORDS
 		sf::Text texts[(N+bnd)*(N+bnd)];
@@ -294,7 +295,7 @@ namespace opt
 			}
 		}
 		#endif
-		window->draw(line, 2 * (N+2) * (N+2), sf::PrimitiveType::Lines);
+		window->draw(line);
 		window->display();
 	}
 } // namespace opt
@@ -302,7 +303,7 @@ namespace opt
 namespace base
 {
 	void render_velocity(){
-		sf::Vertex line[2*N*N];
+		sf::VertexArray line(sf::Lines, 2 * N * N);
 		for(uint32_t y = 0; y < N; y++){
 			for(uint32_t x = 0; x < N; x++){
 				uint32_t index = 2*(x+(y*N));
@@ -331,7 +332,7 @@ namespace base
 			}
 		}
 		window->clear();
-		window->draw(line, 2 * N * N, sf::PrimitiveType::Lines);
+		window->draw(line);
 		window->display();
 	}
 } // namespace base
@@ -340,7 +341,7 @@ namespace base
 namespace SIMD
 {
 	void render_velocity(){
-		sf::Vertex line[2*N*N];
+		sf::VertexArray line(sf::Lines, 2 * N * N);
 		for(uint32_t y = 0; y < N; y++){
 			for(uint32_t x = 0; x < N; x++){
 				uint32_t index = 2*(x+(y*N));
@@ -369,7 +370,7 @@ namespace SIMD
 			}
 		}
 		window->clear();
-		window->draw(line, 2 * N * N, sf::PrimitiveType::Lines);
+		window->draw(line);
 		window->display();
 	}
 } // namespace SIMD

@@ -8,11 +8,11 @@ Global variables and indexing functions can be found in project.h
 
 LAUNCH OPTIONS: ./demo.exe [profiling mode (0,1)] [implementation (0,1,2,3)] [resolution] [iterations]
 Implementation options are as follows:
-0 - SIMD (IX)
 1 - Base (IX)
 2 - Single-Core Optimized (ZIX)
-3 - Parallel (ZIX)
-4 - SIMD (IX) again, but inexplicably broken despite being identical to 0
+3 - SIMD (IX)
+4 - SIMD+Multithreaded (IX)
+
 
 REQUIRED PACKAGES: 
 libsfml-dev
