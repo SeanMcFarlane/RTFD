@@ -97,45 +97,60 @@ void Simulate(uint32_t optim_mode)
 	switch(optim_mode){
 		case 0: // Baseline
 		{
-			// Constant force is added each iteration to demonstrate simulation without needing input.
-			base::add_force(N / 4, N / 4, 100.0f, 0); 
-			base::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+			// Constant smoke sources added at two points in the field.
+			base::add_source(N / 4, N / 4, 1024, 4);
+			base::add_source((3 * N / 4), (3 * N / 4), 1024, 4);
+			// Constant force is added each iteration to demonstrate turbulence without needing input.
+			base::add_force(N / 4, N / 4, 75.0f, 75.0f); 
+			base::add_force(3 * N / 4, 3 * N / 4, -75.0f, -75.0f);
 			base::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 			base::dens_step(N, dens, dens_prev, u, v, diff, dt);
 			break;
 		}
 		case 1: // Singlethreaded Optimized
 		{
-			// Constant force is added each iteration to demonstrate simulation without needing input.
-			opt::add_force(N / 4, N / 4, 100.0f, 0); 
-			opt::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+			// Constant smoke sources are added at two points in the field.
+			opt::add_source(N / 4, N / 4, 1024, 4);
+			opt::add_source((3 * N / 4), (3 * N / 4), 1024, 4);
+			// Constant force is added each iteration to demonstrate turbulence without needing input.
+			opt::add_force(N / 4, N / 4, 75.0f, 75.0f);
+			opt::add_force(3 * N / 4, 3 * N / 4, -75.0f, -75.0f);
 			opt::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 			opt::dens_step(N, dens, dens_prev, u, v, diff, dt);
 			break;
 		}
 		case 2: // Parallelized
 		{
-			// Constant force is added each iteration to demonstrate simulation without needing input.
-			parallel::add_force(N / 4, N / 4, 100.0f, 0); 
-			parallel::add_force(3 * N / 4, 3 * N / 4, -100.0f, 0);
+			// Constant smoke sources are added at two points in the field.
+			parallel::add_source(N / 4, N / 4, 1024, 4);
+			parallel::add_source((3 * N / 4), (3 * N / 4), 1024, 4);
+			// Constant force is added each iteration to demonstrate turbulence without needing input.
+			parallel::add_force(N / 4, N / 4, 75.0f, 75.0f);
+			parallel::add_force(3 * N / 4, 3 * N / 4, -75.0f, -75.0f);
 			parallel::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 			parallel::dens_step(N, dens, dens_prev, u, v, diff, dt);
 			break;
 		}
 		case 3: // SIMD (IX)
 		{
-			// Constant force is added each iteration to demonstrate simulation without needing input.
-			SIMD::add_force(N / 4 + pad, N / 4 + pad, 100.0f, 0); 
-			SIMD::add_force(3 * N / 4 + pad, 3 * N / 4 + pad, -100.0f, 0);
+			// Constant smoke sources are added at two points in the field.
+			SIMD::add_source(N / 4, N / 4, 1024, 4);
+			SIMD::add_source((3 * N / 4), (3 * N / 4), 1024, 4);
+			// Constant force is added each iteration to demonstrate turbulence without needing input.
+			SIMD::add_force(N / 4 + pad, N / 4 + pad, 75.0f, 75.0f);
+			SIMD::add_force(3 * N / 4 + pad, 3 * N / 4 + pad, -75.0f, -75.0f);
 			SIMD::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 			SIMD::dens_step(N, dens, dens_prev, u, v, diff, dt);
 			break;
 		}
 		case 4: // SIMD & Parallelized
 		{
-			// Constant force is added each iteration to demonstrate simulation without needing input.
-			SIMD_PARA::add_force(N / 4 + pad, N / 4 + pad, 100.0f, 0); 
-			SIMD_PARA::add_force(3 * N / 4 + pad, 3 * N / 4 + pad, -100.0f, 0);
+			// Constant smoke sources are added at two points in the field.
+			SIMD_PARA::add_source(N / 4, N / 4, 1024, 4);
+			SIMD_PARA::add_source((3 * N / 4), (3 * N / 4), 1024, 4);
+			// Constant force is added each iteration to demonstrate turbulence without needing input.
+			SIMD_PARA::add_force(N / 4 + pad, N / 4 + pad, 75.0f, 75.0f);
+			SIMD_PARA::add_force(3 * N / 4 + pad, 3 * N / 4 + pad, -75.0f, -75.0f);
 			SIMD_PARA::vel_step(N, u, v, u_prev, v_prev, visc, dt);
 			SIMD_PARA::dens_step(N, dens, dens_prev, u, v, diff, dt);
 			break;
@@ -143,23 +158,9 @@ void Simulate(uint32_t optim_mode)
 	}
 }
 
-namespace opt
-{
-	void add_force(uint32_t i, uint32_t j, float xForce, float yForce){
-		if (i < pad || i > N || j < pad || j > N)
-			return;
-		u[ZIX(i, j)] += dt * xForce;
-		v[ZIX(i, j)] += dt * yForce;
-	}
-} // namespace opt
-
-namespace parallel
-{
-	void add_force(uint32_t i, uint32_t j, float xForce, float yForce){
-		opt::add_force(i,j,xForce,yForce);
-	}
-} // namespace parallel
-
+//
+// Row-by-row indexed functions
+// 
 
 namespace base
 {
@@ -169,12 +170,32 @@ namespace base
 		u[IX(i, j)] += dt * xForce;
 		v[IX(i, j)] += dt * yForce;
 	}
+	void add_source(int i, int j, float density, int diameter) {
+		if (i < pad || i > N || j < pad || j > N) {
+			return;
+		}
+		if (diameter > 1) {
+			int iter = 0;
+			for (int i_offset = -diameter / 2; i_offset <= diameter / 2; i_offset++) {
+				for (int j_offset = -diameter / 2; j_offset <= diameter / 2; j_offset++) {
+					if (i_offset * i_offset + j_offset * j_offset > (diameter / 2) * (diameter / 2)) { continue; }
+					uint32_t index = IX(i + i_offset, j + j_offset);
+					if (index < array_size && index >= 0) {
+						dens_prev[IX(i+i_offset, j+j_offset)] += density;
+					}
+				}
+			}
+		}
+	}
 } // namespace base
 
 namespace SIMD
 {
 	void add_force(uint32_t i, uint32_t j, float xForce, float yForce){
 		base::add_force(i, j, xForce, yForce);
+	}
+	void add_source(int i, int j, float density, int diameter) {
+		base::add_source(i, j, density, diameter);
 	}
 } // namespace SIMD
 
@@ -183,4 +204,49 @@ namespace SIMD_PARA
 	void add_force(uint32_t i, uint32_t j, float xForce, float yForce){
 		base::add_force(i, j, xForce, yForce);
 	}
+	void add_source(int i, int j, float density, int diameter) {
+		base::add_source(i, j, density, diameter);
+	}
 } // namespace SIMD_PARA
+
+
+//
+// Zone-indexed functions
+//
+
+namespace opt
+{
+	void add_force(uint32_t i, uint32_t j, float xForce, float yForce) {
+		if (i < pad || i > N || j < pad || j > N)
+			return;
+		u[ZIX(i, j)] += dt * xForce;
+		v[ZIX(i, j)] += dt * yForce;
+	}
+
+	void add_source(int i, int j, float density, int diameter) {
+		if (i < pad || i > N || j < pad || j > N)
+			return;
+
+		if (diameter > 1) {
+			for (int i_offset = -diameter / 2; i_offset <= diameter / 2; i_offset++) {
+				for (int j_offset = -diameter / 2; j_offset <= diameter / 2; j_offset++) {
+					if (i_offset * i_offset + j_offset * j_offset > (diameter / 2) * (diameter / 2)) { continue; }
+					uint32_t index = ZIX(i + i_offset, j + j_offset);
+					if (index < array_size && index >= 0) {
+						dens_prev[ZIX(i + i_offset, j + j_offset)] += density;
+					}
+				}
+			}
+		}
+	}
+} // namespace opt
+
+namespace parallel
+{
+	void add_force(uint32_t i, uint32_t j, float xForce, float yForce) {
+		opt::add_force(i, j, xForce, yForce);
+	}
+	void add_source(int i, int j, float density, int diameter) {
+		opt::add_source(i, j, density, diameter);
+	}
+} // namespace parallel

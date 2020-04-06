@@ -23,6 +23,7 @@
 
 static uint32_t dvel;
 
+
 static int win_x, win_y;
 static uint32_t mouse_down[3];
 static int omx, omy, mx, my;
@@ -30,6 +31,11 @@ static int omx, omy, mx, my;
 sf::RenderWindow *window;
 sf::Clock *g_clock;
 sf::Font *font;
+
+bool CKeyDown;
+uint32_t render_mode;
+int brush_size;
+uint32_t array_size;
 
 const float visLen = 30.0f;
 
@@ -68,45 +74,97 @@ static void motion_func()
 	my = mPos.y;
 }
 
-// static void draw_density ( void )
-// {
-// 	// Density rendering not yet implemented
-// }
+static void render_density ( void )
+{
+	uint32_t texsize = resolution;
+	uint8_t pixels[texsize * texsize * 4];
+
+	sf::Texture tex;
+	if (!tex.create(texsize, texsize)) std::cout << "tex broked";
+	sf::Sprite sprite(tex);
+
+	for (int x = 0; x < texsize; x++)
+	{
+		for (int y = 0; y < texsize; y++)
+		{
+			float xStep = (float)x / (float)texsize;
+			float yStep = (float)y / (float)texsize;
+
+			uint32_t gridx = xStep * N + pad;
+			uint32_t gridy = (N-(yStep * N));
+
+			float density = dens_prev[IX(gridx, gridy)];
+
+			density = (density > 255) ? 255 : density; //Clamp to 255.
+
+			pixels[((y * texsize) + x) * 4 + 0] = (uint8_t)255-density;	// R
+			pixels[((y * texsize) + x) * 4 + 1] = (uint8_t)255-density;	// G
+			pixels[((y * texsize) + x) * 4 + 2] = (uint8_t)255-density;	// B
+			pixels[((y * texsize) + x) * 4 + 3] = (uint8_t)255;			// A
+		}
+	}
+	tex.update(pixels);
+
+	window->draw(sprite);
+	window->display();
+}
 
 
 static void Render(uint32_t optim_mode){
-	switch(optim_mode){
-		case 0: // Unoptimized
-		{
-			base::render_velocity();
-			break;
+	if (render_mode == 0) {
+		switch (optim_mode) {
+			case 0: // Unoptimized
+			{
+				base::render_velocity();
+				break;
+			}
+			case 1: // Single core optimized (ZIX)
+			{
+				opt::render_velocity();
+				break;
+			}
+			case 2: // Parallelized (ZIX)
+			{
+				opt::render_velocity();
+				break;
+			}
+			case 3: // SIMD (IX)
+			{
+				SIMD::render_velocity();
+				break;
+			}
+			case 4: // SIMD & Parallelized (IX)
+			{
+				SIMD::render_velocity();
+				break;
+			}
 		}
-		case 1: // Single core optimized (ZIX)
-		{
-			opt::render_velocity();
-			break;
-		}
-		case 2: // Parallelized (ZIX)
-		{
-			opt::render_velocity();
-			break;
-		}
-		case 3: // SIMD (IX)
-		{
-			SIMD::render_velocity();
-			break;
-		}
-		case 4: // SIMD & Parallelized (IX)
-		{
-			SIMD::render_velocity();
-			break;
-		}
+	}
+	else if (render_mode == 1) {
+		render_density();
+	}
+	else {
+		render_mode = 0;
+		//std::cout << "Set render mode back to 0\n";
 	}
 }
 
-static void get_from_UI(float *d, float *u, float *v)
+static void ReadInput(float *d, float *u, float *v)
 {
-	uint32_t i, j, size = (N + bnd) * (N + bnd);
+	uint32_t i, j, size = array_size;
+
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::C)) 
+	{
+		if (!CKeyDown) 
+		{
+			render_mode++;
+			CKeyDown = true;
+		}
+	}
+	else if(CKeyDown)
+	{
+		CKeyDown = false;
+	}
 
 	for (i = 0; i < size; i++)
 	{
@@ -125,21 +183,64 @@ static void get_from_UI(float *d, float *u, float *v)
 
 	if (mouse_down[0]){
 		if(optim_mode==1 || optim_mode==2){
-			u[ZIX(i, j)] = force * dt * (mx - omx);
-			v[ZIX(i, j)] = force * dt * (omy - my);
+			if (brush_size > 1) {
+				for (int i_offset = -brush_size / 2; i_offset <= brush_size / 2; i_offset++)
+				{
+					for (int j_offset = -brush_size / 2; j_offset <= brush_size / 2; j_offset++)
+					{
+						if (i_offset * i_offset + j_offset * j_offset > (brush_size / 2) * (brush_size / 2)) { continue; }
+						uint32_t index = ZIX(i + i_offset, j + j_offset);
+						if (index < array_size && index >= 0) {
+							u[index] = force * dt * (mx - omx);
+							v[index] = force * dt * (omy - my);
+						}
+					}
+				}
+			}
 		}
 		else{
-			u[IX(i+pad, j+pad)] = force * dt * (mx - omx);
-			v[IX(i+pad, j+pad)] = force * dt * (omy - my);
+
+			if (brush_size > 1) {
+				for (int i_offset = -brush_size / 2; i_offset <= brush_size / 2; i_offset++){
+					for (int j_offset = -brush_size / 2; j_offset <= brush_size / 2; j_offset++){
+						if (i_offset * i_offset + j_offset * j_offset > (brush_size / 2) * (brush_size / 2)) { continue; }
+						uint32_t index = IX(i + pad + i_offset, j + pad + j_offset);
+						if (index < array_size && index >= 0) {
+							u[index] = force * dt * (mx - omx);
+							v[index] = force * dt * (omy - my);
+						}
+					}
+				}
+			}
 		}
 	}
 
 	if (mouse_down[2]){
 		if(optim_mode==1 || optim_mode==2){
-			d[ZIX(i, j)] = source;
+			if (brush_size > 1) {
+				for (int i_offset = -brush_size / 2; i_offset <= brush_size / 2; i_offset++){
+					for (int j_offset = -brush_size / 2; j_offset <= brush_size / 2; j_offset++){
+						if (i_offset * i_offset + j_offset * j_offset > (brush_size / 2) * (brush_size / 2)) { continue; }
+						uint32_t index = ZIX(i + i_offset, j + j_offset);
+						if (index < array_size && index >= 0) {
+							d[index] += source;
+						}
+					}
+				}
+			}
 		}
 		else{
-			d[IX(i+pad, j+pad)] = source;
+			if (brush_size > 1) {
+				for (int i_offset = -brush_size / 2; i_offset <= brush_size / 2; i_offset++){
+					for (int j_offset = -brush_size / 2; j_offset <= brush_size / 2; j_offset++){
+						if (i_offset * i_offset + j_offset * j_offset > (brush_size/2) * (brush_size/2)) { continue; }
+						uint32_t index = IX(i + pad + i_offset, j + pad + j_offset);
+						if (index < array_size && index >= 0) {
+							d[index] += source;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -184,14 +285,18 @@ static void GameLoop(){
 					mouse_func(2, false);
 				}
 			}
+			if (event.type == sf::Event::MouseWheelMoved)
+			{
+				brush_size += event.mouseWheel.delta;
+			}
 		}
 
-		if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
-		{
+		//if (sf::Mouse::isButtonPressed(sf::Mouse::Left) || )
+		//{
 			motion_func();
-		}
+		//}
 
-		get_from_UI(dens_prev, u_prev, v_prev);
+		ReadInput(dens_prev, u_prev, v_prev);
 		Simulate(optim_mode);
 		Render(optim_mode);
 	}
@@ -407,23 +512,28 @@ int main ( int argc, char ** argv )
 	else{bnd = 2;}
 	N-=bnd;
     pad = bnd/2;
-	
+	array_size = (N + bnd) * (N + bnd);
+
 	timeSpeed = 1.0f;
+	//diff = 0.00001f;
+	//visc = 0.0025f;
 	diff = 0.0f;
 	visc = 0.0f;
-	force = 1000.0f;
-	source = 100.0f;
+	force = 50.0f;
+	source = 512.0f;
+	brush_size = resolution/128;
 
 	DPRINT("zoneSize:" << zoneSize <<"\n");
 	//DPRINT("zoneDivisor:" << zoneDivisor <<"\n");
 	DPRINT("zonesInRow:" << zonesInRow <<"\n");
 
 	printf ( "\n\nHow to use this demo:\n\n" );
-	//printf ( "\t Add densities with the right mouse button\n" );
-	printf ( "Add velocities with the left mouse button and dragging the mouse\n" );
-	//printf ( "\t Toggle density/velocity display with the 'v' key\n" );
+	printf ( "\t Add densities with the right mouse button\n" );
+	printf ( "\t Add velocities with the left mouse button and dragging the mouse\n" );
+	printf ( "\t Toggle density/velocity display with the 'c' key\n");
+	printf ( "\t Use the scroll wheel to adjust brush size.\n" );
 	//printf ( "\t Clear the simulation by pressing the 'c' key\n" );
-	//printf ( "\t Quit by pressing the 'q' key\n" );
+	printf ( "\t Quit by closing the window or using CTRL+C on the command line.\n" );
 
 	dvel = 0;
 

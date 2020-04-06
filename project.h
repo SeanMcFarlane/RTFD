@@ -41,6 +41,7 @@ extern const uint32_t zoneLen;
 extern const uint32_t zoneSize;
 extern const uint32_t divShift; //Bit shift amount to perform division
 extern const uint32_t zonesInRow; //Should be equal to N/zoneLen.
+extern uint32_t array_size;
 
 static const uint32_t ZIX(const uint32_t x, const uint32_t y)
 {
@@ -68,6 +69,7 @@ static const uint32_t ZIX(const uint32_t x, const uint32_t y)
 namespace parallel{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
+    void add_source(int i, int j, float density, int diameter);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
     void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
@@ -77,6 +79,7 @@ namespace parallel{
 namespace opt{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
+    void add_source(int i, int j, float density, int diameter);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
     void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
@@ -86,6 +89,7 @@ namespace opt{
 namespace base{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
+    void add_source(int i, int j, float density, int diameter);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
     void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
@@ -95,6 +99,7 @@ namespace base{
 namespace SIMD{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
+    void add_source(int i, int j, float density, int diameter);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
     void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
@@ -106,6 +111,7 @@ namespace SIMD{
 namespace SIMD_PARA{
     void dens_step(uint32_t N, float *x, float *x0, float *u, float *v, float diff, float dt);
     void vel_step(uint32_t N, float *u, float *v, float *u0, float *v0, float visc, float dt);
+    void add_source(int i, int j, float density, int diameter);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
     void project(uint32_t N, float *u, float *v, float *p, float *div);
 	void render_velocity();
