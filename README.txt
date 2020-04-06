@@ -6,7 +6,7 @@ Core algorithms for the simulation can be found in RTFD_[VERSION].cpp files
 Experiment setup code can be found in demo.cpp
 Global variables and indexing functions can be found in project.h
 
-LAUNCH OPTIONS: ./demo.exe [profiling mode (0,1)] [implementation (0,1,2,3)] [resolution] [iterations]
+LAUNCH OPTIONS: ./demo_render.exe [profiling mode (0,1)] [implementation (0,1,2,3)] [resolution] [iterations]
 Implementation options are as follows:
 1 - Base (IX)
 2 - Single-Core Optimized (ZIX)
