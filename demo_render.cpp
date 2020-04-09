@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <SFML/Graphics.hpp>
 #include "project.h"
-#include "cudatest.h"
 
 /* global variables */
 

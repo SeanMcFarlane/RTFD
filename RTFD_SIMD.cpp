@@ -340,7 +340,7 @@ namespace SIMD_PARA { // SIMD and multithreaded implementation
 		int i, j, k;
 		for (k = 0; k < 20; k++)
 		{
-			#pragma omp parallel for default(none) firstprivate( i, N, b, bnd, x0, x) schedule(static,128)
+			#pragma omp parallel for default(none) firstprivate( i, N, pad, b, bnd, x0, x) schedule(static,128)
 			for ( j=4; j<=N+4; j++ ) { 
 				__m128 mid0;
 				__m128 mid1 = _mm_load_ps( &( x[IX(0, j)] ) );
