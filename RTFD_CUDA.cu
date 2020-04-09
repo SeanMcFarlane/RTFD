@@ -1,5 +1,7 @@
 #include "project.h"
 
+#define BSIZE 32
+
 namespace CUDA { // CUDA implementation
 	
 	__global__
@@ -32,15 +34,15 @@ namespace CUDA { // CUDA implementation
 			x[IX(i, j)] = (b == 1) ? -x[IX(i+1, j)] : x[IX(i+1, j)];
 		}		
 		
-		else if (i == N+pad) {
+		if (i == N+pad) {
 			x[IX(i, j)] = (b == 1) ? -x[IX(i-1, j)] : x[IX(i-1, j)];
 		}
 
-		else if (j == pad-1) {
+		if (j == pad-1) {
 			x[IX(i, j)] = (b == 2) ? -x[IX(i, j+1)] : x[IX(i, j+1)];
 		}		
 
-		else if (j == N+pad) {
+		if (j == N+pad) {
 			x[IX(i, j)] = (b == 2) ? -x[IX(i, j-1)] : x[IX(i, j-1)];
 		}
 
@@ -72,7 +74,7 @@ namespace CUDA { // CUDA implementation
 		cudaMalloc((void**)&dev_x, size);
 		cudaMalloc((void**)&dev_x0, size);
 		
-		dim3 blockSize = dim3(8, 8);
+		dim3 blockSize = dim3(BSIZE, BSIZE);
 
 		int dim = N + bnd;
 		int bx = (dim + blockSize.x - 1) / blockSize.x;
