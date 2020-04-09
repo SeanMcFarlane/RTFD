@@ -1,4 +1,5 @@
 #include "project.h"
+#include <cfloat>
 
 namespace SIMD { // SIMD implementation
 
@@ -101,7 +102,7 @@ namespace SIMD { // SIMD implementation
 		FOR_EACH_CELL_FULL
 			if(j != lastJ){lastJ = j; std::cout << "\n";}
 			float num = test[IX(i,j)];
-			if(num < __FLT_EPSILON__){
+			if(num < FLT_EPSILON ){
 				std::cout <<"### ";
 			}
 			else if(num < 10){
@@ -131,7 +132,7 @@ namespace SIMD { // SIMD implementation
 		FOR_EACH_CELL_FULL
 			if(j != lastJ){lastJ = j; std::cout << "\n";}
 			float num = test[IX(i,j)];
-			if(num < __FLT_EPSILON__){
+			if(num < FLT_EPSILON ){
 				std::cout <<"### ";
 			}
 			else if(num < 10){
@@ -154,7 +155,7 @@ namespace SIMD { // SIMD implementation
 		- SIMD'ify advect and project
 	*/
 
-	void lin_solve(uint32_t N, uint32_t b, float *__restrict__ x, float *__restrict__ x0, float a, float c)
+	void lin_solve(uint32_t N, uint32_t b, float *x, float *x0, float a, float c)
 	{
 		const float cInv = 1.0f/c;
 		const __m128 _a = _mm_set_ps(a,a,a,a);
@@ -331,12 +332,12 @@ namespace SIMD_PARA { // SIMD and multithreaded implementation
 		- SIMD'ify advect and project
 	*/
 
-	void lin_solve(const uint32_t N, const uint32_t b, float *__restrict__ x, float *__restrict__ x0, const float a, const float c)
+	void lin_solve(const uint32_t N, const uint32_t b, float *x, float *x0, const float a, const float c)
 	{
 		const float cInv = 1.0f/c;
 		const __m128 _a = _mm_set_ps(a,a,a,a);
 		const __m128 _c = _mm_set_ps(cInv,cInv,cInv,cInv);
-		uint32_t i, j, k;
+		int i, j, k;
 		for (k = 0; k < 20; k++)
 		{
 			#pragma omp parallel for default(none) firstprivate( i, N, b, bnd, x0, x) schedule(static,128)

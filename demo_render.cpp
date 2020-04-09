@@ -18,11 +18,13 @@
 #include <stdio.h>
 #include <SFML/Graphics.hpp>
 #include "project.h"
+#include "cudatest.h"
 
 /* global variables */
 
 static uint32_t dvel;
 
+uint8_t *pixels;
 
 static int win_x, win_y;
 static uint32_t mouse_down[3];
@@ -35,7 +37,6 @@ sf::Font *font;
 bool CKeyDown;
 uint32_t render_mode;
 int brush_size;
-uint32_t array_size;
 
 const float visLen = 30.0f;
 
@@ -51,9 +52,10 @@ static void init_sfml(uint32_t resolution)
 	font->loadFromFile("UbuntuMono-B.ttf");
 	sf::ContextSettings settings;
 	settings.antialiasingLevel = 4;
-	window = new sf::RenderWindow(sf::VideoMode(resolution, resolution), "Wind Field Prototype", sf::Style::Default, settings);
+	window = new sf::RenderWindow(sf::VideoMode(resolution, resolution), "Real-Time Fluid Dynamics Sim", sf::Style::Default, settings);
 	window->setFramerateLimit(frameRate);
 	g_clock = new sf::Clock();
+	pixels = new uint8_t[resolution*resolution*4];
 }
 
 static void mouse_func(uint32_t id, bool pressed)
@@ -77,7 +79,6 @@ static void motion_func()
 static void render_density ( void )
 {
 	uint32_t texsize = resolution;
-	uint8_t pixels[texsize * texsize * 4];
 
 	sf::Texture tex;
 	if (!tex.create(texsize, texsize)) std::cout << "tex broked";
@@ -136,6 +137,11 @@ static void Render(uint32_t optim_mode){
 			case 4: // SIMD & Parallelized (IX)
 			{
 				SIMD::render_velocity();
+				break;
+			}
+			case 5: // CUDA
+			{
+				CUDA::render_velocity();
 				break;
 			}
 		}
@@ -289,12 +295,13 @@ static void GameLoop(){
 			{
 				brush_size += event.mouseWheel.delta;
 			}
+			if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R)
+			{
+				clear_data();
+			}
 		}
 
-		//if (sf::Mouse::isButtonPressed(sf::Mouse::Left) || )
-		//{
-			motion_func();
-		//}
+		motion_func();
 
 		ReadInput(dens_prev, u_prev, v_prev);
 		Simulate(optim_mode);
@@ -313,8 +320,6 @@ namespace opt
 		sf::Text texts[(N+bnd)*(N+bnd)];
 		#endif
 		DPRINT("2\n");
-		bool hit[2*(N+2)*(N+2)];
-		DPRINT("3\n");
 		uint32_t hits = 0;
 		uint32_t zX, zY, i, j;
 
@@ -350,10 +355,6 @@ namespace opt
 						uint32_t zix = ZIX(i, j);
 						uint32_t index = 2 * zix;
 						DPRINT("RENDERLOOP: (" << i << "," << j <<")="<< index <<"\n");
-						
-						hit[index] = true;
-						hit[index+1] = true;
-						hits++;
 
 						float xStep = (float)resolution/N;
 						float yStep = (float)resolution/N;
@@ -381,13 +382,6 @@ namespace opt
 						#endif
 					}
 				}	
-			}
-		}
-
-		for(uint32_t i = 0; i < 2 * N * N; i++)
-		{
-			if(hit[i] == false){
-				DPRINT("Cell at "<<i<<" was missed by new indexing!\n");
 			}
 		}
 
@@ -480,6 +474,13 @@ namespace SIMD
 	}
 } // namespace SIMD
 
+namespace CUDA
+{
+	void render_velocity() {
+		base::render_velocity();
+	}
+} // namespace CUDA
+
 
 /*
   ----------------------------------------------------------------------
@@ -490,22 +491,21 @@ namespace SIMD
 int main ( int argc, char ** argv )
 {
 
-	if ( argc != 1 && argc != 5 ) {
-		fprintf ( stderr, "Usage: demo.exe <profiling mode[0-1]> <select implementation[0-4]> <resolution[int]> <iterations[int]>\n");
+	if ( argc != 1 && argc != 4 ) {
+		fprintf ( stderr, "Usage: demo.exe <select implementation[0-5]> <resolution[int]> <iterations[int]>\n");
 		return 1;
 	}
 
+	profiling = false;
 	if ( argc == 1 ) {
-		profiling = false;
-		optim_mode = 4;
+		optim_mode = 0;
 		N = 256;
 		iterations = 1000;
-		fprintf ( stderr, "Using defaults: visualizer mode, SIMD, 256x256\n");
+		fprintf ( stderr, "Using defaults: profiler mode, SIMD, 256x256, 1000 iterations\n");
 	} else {
-		profiling = atoi(argv[1]) > 0 ? true : false;
-		optim_mode = atoi(argv[2]);
-		N = atoi(argv[3]);
-		iterations = atoi(argv[4]);
+		optim_mode = atoi(argv[1]);
+		N = atoi(argv[2]);
+		iterations = atoi(argv[3]);
 	}
 
 	if(optim_mode==3||optim_mode==4){bnd = 8;}
@@ -513,57 +513,39 @@ int main ( int argc, char ** argv )
 	N-=bnd;
     pad = bnd/2;
 	array_size = (N + bnd) * (N + bnd);
-
 	timeSpeed = 1.0f;
-	//diff = 0.00001f;
-	//visc = 0.0025f;
-	diff = 0.0f;
-	visc = 0.0f;
+	diff = 0.00001f;
+	visc = 0.00001f;
 	force = 50.0f;
 	source = 512.0f;
 	brush_size = resolution/128;
-
-	DPRINT("zoneSize:" << zoneSize <<"\n");
-	//DPRINT("zoneDivisor:" << zoneDivisor <<"\n");
-	DPRINT("zonesInRow:" << zonesInRow <<"\n");
 
 	printf ( "\n\nHow to use this demo:\n\n" );
 	printf ( "\t Add densities with the right mouse button\n" );
 	printf ( "\t Add velocities with the left mouse button and dragging the mouse\n" );
 	printf ( "\t Toggle density/velocity display with the 'c' key\n");
 	printf ( "\t Use the scroll wheel to adjust brush size.\n" );
-	//printf ( "\t Clear the simulation by pressing the 'c' key\n" );
+	printf ( "\t Clear the simulation by pressing the 'r' key\n" );
 	printf ( "\t Quit by closing the window or using CTRL+C on the command line.\n" );
 
 	dvel = 0;
 
-	if (!allocate_data_simd()) return 1;
+	if (optim_mode == 5) {
+		if (!allocate_data()) return 1;
+	}
+	else {
+		if (!allocate_data_simd()) return 1;
+	}
+
 	clear_data();
 
 	win_x = resolution;
 	win_y = resolution;
 
-	//DPRINT("Max index of ZIX: " << ZIX(N, N) << "\nMax size of array:" << (N+2)*(N+2) << ".\n");
-	//SIMD::m128_test();
-	//SIMD::m128_test2(test);
-	//return 0;
-	
-	if (profiling)
-	{
-		dt = timeSpeed / 60.0f;
-	}
-	else{
-		dt = timeSpeed / (float)frameRate;
-	}
-	if(profiling){
-		while(cur_iter < iterations){
-			cur_iter++;
-			Simulate(optim_mode);
-		}
-	}
-	else{
-		init_sfml(resolution);
-		GameLoop();
-	}
+	dt = timeSpeed / 60.0f;
+
+	init_sfml(resolution);
+	GameLoop();
+
 	return 0;
 }

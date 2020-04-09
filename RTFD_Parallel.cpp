@@ -26,7 +26,7 @@ namespace parallel {
 
 	void lin_solve ( uint32_t N, uint32_t b, float * x, float * x0, float a, float c )
 	{
-		uint32_t i, j, k, zX, zY;
+		int i, j, k, zX, zY;
 		for ( k=0 ; k<20 ; k++ ) { 
 		#pragma omp parallel for
 			for( zY=0; zY<zonesInRow; zY++){

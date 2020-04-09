@@ -11,38 +11,45 @@
 int main ( int argc, char ** argv )
 {
 
-	if ( argc != 1 && argc != 5 ) {
-		fprintf ( stderr, "Usage: demo.exe <profiling mode[0-1]> <select implementation[0-4]> <resolution[int]> <iterations[int]>\n");
+	if ( argc != 1 && argc != 4 ) {
+		fprintf ( stderr, "Usage: demo.exe <select implementation[0-5]> <resolution[int]> <iterations[int]>\n");
 		return 1;
 	}
-
+	profiling = true;
 	if ( argc == 1 ) {
-		profiling = true;
 		optim_mode = 0;
 		N = 256;
 		iterations = 1000;
 		fprintf ( stderr, "Using defaults: profiler mode, SIMD, 256x256, 1000 iterations\n");
 	} else {
-		profiling = true;
-		optim_mode = atoi(argv[2]);
-		N = atoi(argv[3]);
-		iterations = atoi(argv[4]);
+		optim_mode = atoi(argv[1]);
+		N = atoi(argv[2]);
+		iterations = atoi(argv[3]);
 	}
 
 	if(optim_mode==3||optim_mode==4){bnd = 8;}
 	else{bnd = 2;}
 	N-=bnd;
-	
+	pad = bnd/2;
+	array_size = (N + bnd) * (N + bnd);
 	timeSpeed = 1.0f;
-	diff = 0.0f;
-	visc = 0.0f;
-	force = 1000.0f;
-	source = 100.0f;
+	diff = 0.00001f;
+	visc = 0.00001f;
+	force = 50.0f;
+	source = 512.0f;
 
     printf( "Beginning test...\n" );
 
-	if (!allocate_data_simd()) return 1;
+	if (optim_mode == 5) {
+		if (!allocate_data()) return 1;
+	}
+	else {
+		if (!allocate_data_simd()) return 1;
+	}
 	clear_data();
+
+
+	printf( "Data allocated...\n" );
 
 	dt = timeSpeed / 60.0f;
 
