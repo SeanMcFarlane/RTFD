@@ -42,6 +42,7 @@ extern const uint32_t zoneSize;
 extern const uint32_t divShift; //Bit shift amount to perform division
 extern const uint32_t zonesInRow; //Should be equal to N/zoneLen.
 extern uint32_t array_size;
+extern uint32_t dim;
 
 static uint32_t ZIX(const uint32_t x, const uint32_t y)
 {
@@ -121,20 +122,23 @@ namespace SIMD_PARA{
 } // namespace SIMD_PARA
 
 namespace CUDA {
-    void dens_step(uint32_t N, float* x, float* x0, float* u, float* v, float diff, float dt);
-    void vel_step(uint32_t N, float* u, float* v, float* u0, float* v0, float visc, float dt);
+    void dens_step(float* x, float* x0, float* u, float* v, float diff, float dt);
+    void vel_step(float* u, float* v, float* u0, float* v0, float visc, float dt);
     void add_density(int i, int j, float density, int diameter);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
-    void project(uint32_t N, float* u, float* v, float* p, float* div);
+    void project(float* u, float* v, float* p, float* div);
     void render_velocity();
-    void set_bnd(uint32_t N, uint32_t b, float* x);
-    void lin_solve(uint32_t N, uint32_t b, float* x, float* x0, float a, float c);
-    void add_source(uint32_t N, float* x, float* s, float dt);
-    void diffuse(uint32_t N, uint32_t b, float* x, float* x0, float diff, float dt);
-    void advect(uint32_t N, uint32_t b, float* d, float* d0, float* u, float* v, float dt);
+    void set_bnd(uint32_t b, float* x);
+    void lin_solve(uint32_t b, float* x, float* x0, float a, float c);
+    void add_source(float* x, float* s, float dt);
+    void diffuse(uint32_t b, float* x, float* x0, float diff, float dt);
+    void advect(uint32_t b, float* d, float* d0, float* u, float* v, float dt);
+    int allocate_data_cuda_pinned(void** ptr, size_t size);
+    void init_cuda_globals(uint32_t N, uint32_t dim, uint32_t bnd, uint32_t pad);
 } // namespace CUDA
 
 void Simulate(uint32_t optim_mode);
 void clear_data();
+int allocate_data_cuda();
 int allocate_data_simd();
 int allocate_data();

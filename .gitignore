@@ -3,3 +3,7 @@
 *.o
 /SFML
 /.vs/
+/Win64/.vs/
+*.pdb
+CppProperties.json
+*.ilk

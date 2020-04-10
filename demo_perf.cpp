@@ -31,7 +31,8 @@ int main ( int argc, char ** argv )
 	else{bnd = 2;}
 	N-=bnd;
 	pad = bnd/2;
-	array_size = (N + bnd) * (N + bnd);
+	dim = N + bnd;
+	array_size = dim * dim;
 	timeSpeed = 1.0f;
 	diff = 0.00001f;
 	visc = 0.00001f;
@@ -41,11 +42,17 @@ int main ( int argc, char ** argv )
     printf( "Beginning test...\n" );
 
 	if (optim_mode == 5) {
-		if (!allocate_data()) return 1;
+		if (!allocate_data_cuda())
+		{
+			fprintf(stderr, "Cuda allocation failed.\n");
+			return 1;
+		}
+		CUDA::init_cuda_globals(N, dim, bnd, pad);
 	}
 	else {
 		if (!allocate_data_simd()) return 1;
 	}
+
 	clear_data();
 
 

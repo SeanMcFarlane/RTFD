@@ -32,6 +32,7 @@ static int omx, omy, mx, my;
 sf::RenderWindow *window;
 sf::Clock *g_clock;
 sf::Font *font;
+sf::Text *texts;
 
 bool CKeyDown;
 uint32_t render_mode;
@@ -55,6 +56,7 @@ static void init_sfml(uint32_t resolution)
 	window->setFramerateLimit(frameRate);
 	g_clock = new sf::Clock();
 	pixels = new uint8_t[resolution*resolution*4];
+	texts = new sf::Text[(N+bnd)*(N+bnd)];
 }
 
 static void mouse_func(uint32_t id, bool pressed)
@@ -314,11 +316,6 @@ namespace opt
 		DPRINT("render_velocity begin\n");
 		sf::VertexArray line(sf::Lines, 2 * (N + 2) * (N + 2));
 
-		DPRINT("1\n");
-		#ifdef DISPLAY_COORDS
-		sf::Text texts[(N+bnd)*(N+bnd)];
-		#endif
-		DPRINT("2\n");
 		uint32_t hits = 0;
 		uint32_t zX, zY, i, j;
 
@@ -387,14 +384,14 @@ namespace opt
 		window->clear();
 		DPRINT("Cleared window \n");
 		#ifdef DISPLAY_COORDS
-		if(DISPLAY_COORDS){
-			for(uint32_t i = 0; i < (N+2)*(N+2); i++){
-				window->draw(texts[i]);
-			}
+		for(uint32_t i = 0; i < array_size; i++){
+			window->draw(texts[i]);
 		}
 		#endif
 		window->draw(line);
 		window->display();
+
+
 	}
 } // namespace opt
 
@@ -423,6 +420,40 @@ namespace base
 				line[index].color.b = 255*(1-colInterp);
 				line[index].color.g = 128;
 				
+				line[index].position = sf::Vector2f(xPos, yPos);
+
+				line[index+1].position = sf::Vector2f(xPos+xOffset, yPos+yOffset);
+				line[index+1].color = line[index].color;
+			}
+		}
+		window->clear();
+		window->draw(line);
+		window->display();
+	}
+
+	void render_velocity_full(){
+		sf::VertexArray line(sf::Lines, 2 * array_size);
+		for(uint32_t y = 0; y < N; y++){
+			for(uint32_t x = 0; x < N; x++){
+				uint32_t index = 2*(x+(y*N));
+				//DPRINT("("<< x*2 << ", " << y << ")=ArrayPos " << index << "\n"); 
+				//DPRINT("("<< x*2+1 << ", " << y << ")=ArrayPos " << index+1 << "\n");
+
+				float xStep = (float)resolution/N;
+				float yStep = (float)resolution/N;
+
+				float xPos = xStep * ((float)x + 0.5f);
+				float yPos = yStep * ((float)y + 0.5f);		
+
+				float xOffset = u[IX(x, N-y)]*visLen;
+				float yOffset = v[IX(x, N-y)]*visLen;
+				float colInterp = (abs(xOffset)+abs(yOffset))/(visLen*0.5f);
+				colInterp = colInterp <= 1 ? colInterp : 1.0f;
+
+				line[index].color.r = 255*colInterp;
+				line[index].color.b = 255*(1-colInterp);
+				line[index].color.g = 128;
+
 				line[index].position = sf::Vector2f(xPos, yPos);
 
 				line[index+1].position = sf::Vector2f(xPos+xOffset, yPos+yOffset);
@@ -511,7 +542,8 @@ int main ( int argc, char ** argv )
 	else{bnd = 2;}
 	N-=bnd;
     pad = bnd/2;
-	array_size = (N + bnd) * (N + bnd);
+	dim = N + bnd;
+	array_size = dim * dim;
 	timeSpeed = 1.0f;
 	diff = 0.00001f;
 	visc = 0.00001f;
@@ -530,7 +562,12 @@ int main ( int argc, char ** argv )
 	dvel = 0;
 
 	if (optim_mode == 5) {
-		if (!allocate_data()) return 1;
+		printf("Allocating CUDA data...\n");
+		if (allocate_data_cuda()==0) {
+			fprintf(stderr, "CUDA allocation failed.\n");
+			return 1;
+		}
+		CUDA::init_cuda_globals(N, dim, bnd, pad);
 	}
 	else {
 		if (!allocate_data_simd()) return 1;

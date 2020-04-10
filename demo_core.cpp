@@ -37,22 +37,24 @@ float *u, *v, *u_prev, *v_prev;
 float *dens, *dens_prev;
 float *test;
 
-
 float timeSpeed;
 const uint32_t frameRate = 120;
 const uint32_t resolution = 1024;
 uint32_t iterations;
 uint32_t cur_iter = 0;
-uint32_t N;
-uint32_t bnd;
-uint32_t pad;
+
 bool profiling;
 int optim_mode;
 const uint32_t zoneLen = 4;
 const uint32_t zoneSize = 16;
 const uint32_t divShift = 2; //Bit shift amount to perform division
 const uint32_t zonesInRow = 64; //Should be equal to N/zoneLen.
+
 uint32_t array_size;
+uint32_t N;
+uint32_t dim;
+uint32_t bnd;
+uint32_t pad;
 
 /*
   ----------------------------------------------------------------------
@@ -69,10 +71,25 @@ void clear_data(){
 	DPRINT("Data cleared\n");
 }
 
+int allocate_data_cuda()
+{
+	auto const size = sizeof(float)*array_size;
+	if(!CUDA::allocate_data_cuda_pinned((void**)& u, size)) return ( 0 );
+	if(!CUDA::allocate_data_cuda_pinned((void**)& v, size)) return ( 0 );
+	if(!CUDA::allocate_data_cuda_pinned((void**)& u_prev, size)) return ( 0 );
+	if(!CUDA::allocate_data_cuda_pinned((void**)& v_prev, size)) return ( 0 );
+	if(!CUDA::allocate_data_cuda_pinned((void**)& dens, size)) return ( 0 );
+	if(!CUDA::allocate_data_cuda_pinned((void**)& dens_prev, size)) return ( 0 );
+
+	printf("ALLOCATED CUDA DATA SUCCESSFULLY\n");
+
+	return ( 1 );
+}
+
 int allocate_data_simd()
 {
 	DPRINT("ALLOCATING DATA SIMD\n");
-	uint32_t size = (N+bnd)*(N+bnd);
+	uint32_t size = array_size;
 
 	u 			= (float*)_mm_malloc(size*(sizeof(float)), 16);
 	v 			= (float*)_mm_malloc(size*(sizeof(float)), 16);
@@ -94,7 +111,7 @@ int allocate_data_simd()
 
 int allocate_data(void)
 {
-	int size = (N + bnd) * (N + bnd);
+	uint32_t size = array_size;
 
 	u = (float*)malloc(size * sizeof(float));
 	v = (float*)malloc(size * sizeof(float));
@@ -182,8 +199,8 @@ void Simulate(uint32_t optim_mode)
 			// Constant force is added each iteration to demonstrate turbulence without needing input.
 			CUDA::add_force(N / 4 + pad, N / 4 + pad, 150.0f, 150.0f);
 			CUDA::add_force(3 * N / 4 + pad, 3 * N / 4 + pad, -150.0f, -150.0f);
-			CUDA::vel_step(N, u, v, u_prev, v_prev, visc, dt);
-			CUDA::dens_step(N, dens, dens_prev, u, v, diff, dt);
+			CUDA::vel_step(u, v, u_prev, v_prev, visc, dt);
+			CUDA::dens_step(dens, dens_prev, u, v, diff, dt);
 			break;
 		}
 	}
