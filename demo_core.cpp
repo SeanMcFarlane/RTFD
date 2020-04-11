@@ -32,10 +32,11 @@ float force, source;
 //float __attribute__ ((aligned(16))) *dens, *dens_prev;
 //float __attribute__ ((aligned(16))) *test;
 
-//CUDA ARRAYS
+//DATA ARRAYS
 float *u, *v, *u_prev, *v_prev;
 float *dens, *dens_prev;
 float *test;
+float *test_in, *test_out;
 
 float timeSpeed;
 const uint32_t frameRate = 120;
@@ -69,21 +70,6 @@ void clear_data(){
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
 	}
 	DPRINT("Data cleared\n");
-}
-
-int allocate_data_cuda()
-{
-	auto const size = sizeof(float)*array_size;
-	if(!CUDA::allocate_data_cuda_pinned((void**)& u, size)) return ( 0 );
-	if(!CUDA::allocate_data_cuda_pinned((void**)& v, size)) return ( 0 );
-	if(!CUDA::allocate_data_cuda_pinned((void**)& u_prev, size)) return ( 0 );
-	if(!CUDA::allocate_data_cuda_pinned((void**)& v_prev, size)) return ( 0 );
-	if(!CUDA::allocate_data_cuda_pinned((void**)& dens, size)) return ( 0 );
-	if(!CUDA::allocate_data_cuda_pinned((void**)& dens_prev, size)) return ( 0 );
-
-	printf("ALLOCATED CUDA DATA SUCCESSFULLY\n");
-
-	return ( 1 );
 }
 
 int allocate_data_simd()
@@ -199,8 +185,7 @@ void Simulate(uint32_t optim_mode)
 			// Constant force is added each iteration to demonstrate turbulence without needing input.
 			CUDA::add_force(N / 4 + pad, N / 4 + pad, 150.0f, 150.0f);
 			CUDA::add_force(3 * N / 4 + pad, 3 * N / 4 + pad, -150.0f, -150.0f);
-			CUDA::vel_step(u, v, u_prev, v_prev, visc, dt);
-			CUDA::dens_step(dens, dens_prev, u, v, diff, dt);
+			CUDA::combined_step(u, v, u_prev, v_prev, visc, dens, dens_prev, diff, dt);
 			break;
 		}
 	}
@@ -265,6 +250,24 @@ namespace CUDA
 	void add_density(int i, int j, float density, int diameter) {
 		base::add_density(i, j, density, diameter);
 	}
+
+	int allocate_data()
+	{
+		auto const size = sizeof(float)*array_size;
+		if(!CUDA::allocate_data_cuda_pinned((void**)& u, size)) return ( 0 );
+		if(!CUDA::allocate_data_cuda_pinned((void**)& v, size)) return ( 0 );
+		if(!CUDA::allocate_data_cuda_pinned((void**)& u_prev, size)) return ( 0 );
+		if(!CUDA::allocate_data_cuda_pinned((void**)& v_prev, size)) return ( 0 );
+		if(!CUDA::allocate_data_cuda_pinned((void**)& dens, size)) return ( 0 );
+		if(!CUDA::allocate_data_cuda_pinned((void**)& dens_prev, size)) return ( 0 );
+		if(!CUDA::allocate_data_cuda_pinned((void**)& test_in, size)) return ( 0 );
+		if(!CUDA::allocate_data_cuda_pinned((void**)& test_out, size)) return ( 0 );
+
+		printf("ALLOCATED CUDA DATA SUCCESSFULLY\n");
+
+		return ( 1 );
+	}
+
 } // namespace CUDA
 
 //

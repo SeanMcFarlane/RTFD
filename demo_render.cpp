@@ -82,7 +82,7 @@ static void render_density ( void )
 	uint32_t texsize = resolution;
 
 	sf::Texture tex;
-	if (!tex.create(texsize, texsize)) std::cout << "tex broked";
+	if (!tex.create(texsize, texsize)) std::cout << "Texture error.";
 	sf::Sprite sprite(tex);
 
 	for (int x = 0; x < texsize; x++)
@@ -103,6 +103,43 @@ static void render_density ( void )
 			pixels[((y * texsize) + x) * 4 + 1] = (uint8_t)255-density;	// G
 			pixels[((y * texsize) + x) * 4 + 2] = (uint8_t)255-density;	// B
 			pixels[((y * texsize) + x) * 4 + 3] = (uint8_t)255;			// A
+		}
+	}
+	tex.update(pixels);
+
+	window->draw(sprite);
+	window->display();
+}
+
+static void render_cuda_test ( void )
+{
+	CUDA::full_address_test(test_in, test_out);
+
+	uint32_t texsize = dim;
+	sf::Texture tex;
+	if (!tex.create(texsize, texsize)) std::cout << "Texture error.";
+	tex.setSmooth(false);
+	tex.setRepeated(false);
+	sf::Sprite sprite(tex);
+	sf::Vector2f windowsize = window->getView().getSize();
+	sf::Vector2f scale = sf::Vector2f( (float)resolution/(float)texsize, (float)resolution/(float)texsize );
+	sprite.setScale(scale);
+
+	for (int y = 0; y < texsize; y++)
+	{
+		for (int x = 0; x < texsize; x++)
+		{
+			float blue = (test_in[IX_FULL(x, y)]) * (float)255;
+			float red = (test_out[IX_FULL(x, y)]) * (float)255;
+
+			int xprint = test_in[IX_FULL(x, y)];
+			int yprint = test_out[IX_FULL(x, y)]*3;
+			int printVal = xprint+yprint;
+
+			pixels[((y * texsize) + x) * 4 + 0] = (uint8_t)red;	// R
+			pixels[((y * texsize) + x) * 4 + 1] = (uint8_t)0;	// G
+			pixels[((y * texsize) + x) * 4 + 2] = (uint8_t)blue;// B
+			pixels[((y * texsize) + x) * 4 + 3] = (uint8_t)255;	// A
 		}
 	}
 	tex.update(pixels);
@@ -149,6 +186,9 @@ static void Render(uint32_t optim_mode){
 	}
 	else if (render_mode == 1) {
 		render_density();
+	}
+	else if (render_mode == 2 && optim_mode == 5) {
+		render_cuda_test();
 	}
 	else {
 		render_mode = 0;
@@ -521,21 +561,40 @@ namespace CUDA
 int main ( int argc, char ** argv )
 {
 
-	if ( argc != 1 && argc != 4 ) {
-		fprintf ( stderr, "Usage: demo.exe <select implementation[0-5]> <resolution[int]> <iterations[int]>\n");
+	if ( argc != 1 && argc != 4 && argc !=6) {
+		fprintf ( stderr, "Usage: \tdemo.exe <select implementation[0-5]> <resolution[int]> <iterations[int]>\n or:\tdemo.exe 5 <resolution[int]> <iterations[int]> <CUDA block size[int]> <CUDA cells per thread[int]>");
 		return 1;
 	}
-
 	profiling = false;
 	if ( argc == 1 ) {
-		optim_mode = 0;
+		optim_mode = 4;
 		N = 256;
 		iterations = 1000;
-		fprintf ( stderr, "Using defaults: profiler mode, SIMD, 256x256, 1000 iterations\n");
+		printf ("Using defaults: render mode, SIMD+Multithreading, 256x256, 1000 iterations\n");
+	} else if(argc == 6){
+		optim_mode = atoi(argv[1]);
+		N = atoi(argv[2]);
+		iterations = atoi(argv[3]);
+
+		if(optim_mode != 5){
+			fprintf ( stderr, "Using too many arguments for a non-CUDA mode.\n");
+			return 1;
+		}
+
+		CUDA::BSIZE = atoi(argv[4]);
+		if(atoi(argv[5]) <= CUDA::BSIZE){
+			CUDA::CELLSPERTHREAD = atoi(argv[5]);
+		}
+		else{
+			fprintf ( stderr, "Cells per thread cannot exceed block size.\n");
+			return 1;
+		}
 	} else {
 		optim_mode = atoi(argv[1]);
 		N = atoi(argv[2]);
 		iterations = atoi(argv[3]);
+		CUDA::BSIZE = 32;
+		CUDA::CELLSPERTHREAD = 4;
 	}
 
 	if(optim_mode==3||optim_mode==4){bnd = 8;}
@@ -554,16 +613,16 @@ int main ( int argc, char ** argv )
 	printf ( "\n\nHow to use this demo:\n\n" );
 	printf ( "\t Add densities with the right mouse button\n" );
 	printf ( "\t Add velocities with the left mouse button and dragging the mouse\n" );
-	printf ( "\t Toggle density/velocity display with the 'c' key\n");
+	printf ( "\t Toggle velocity/density/CUDA allocation display with the 'c' key\n");
 	printf ( "\t Use the scroll wheel to adjust brush size.\n" );
 	printf ( "\t Clear the simulation by pressing the 'r' key\n" );
-	printf ( "\t Quit by closing the window or using CTRL+C on the command line.\n" );
+	printf ( "\t Quit by closing the window or using CTRL+C on the command line.\n\n" );
 
 	dvel = 0;
 
 	if (optim_mode == 5) {
 		printf("Allocating CUDA data...\n");
-		if (allocate_data_cuda()==0) {
+		if (CUDA::allocate_data()==0) {
 			fprintf(stderr, "CUDA allocation failed.\n");
 			return 1;
 		}
@@ -582,6 +641,11 @@ int main ( int argc, char ** argv )
 
 	init_sfml(resolution);
 	GameLoop();
+
+
+	if(optim_mode==5){
+		CUDA::dealloc_cuda_globals();
+	}
 
 	return 0;
 }

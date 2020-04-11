@@ -9,6 +9,7 @@
 #include "immintrin.h" // for AVX
 
 #define IX(i,j) ((i+pad)+(N+bnd)*(j))
+#define IX_FULL(i,j) (i+j*dim)
 #define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
 #define FOR_EACH_CELL for ( j=pad; j<N+pad; j++ ) { for ( i=pad ; i<N+pad; i++ ) { 
 #define END_FOR }}
@@ -27,6 +28,7 @@ extern float force, source;
 extern float *u, *v, *u_prev, *v_prev;
 extern float *dens, *dens_prev;
 extern float *test;
+extern float *test_in, *test_out;
 extern float timeSpeed;
 extern const uint32_t frameRate;
 extern const uint32_t resolution;
@@ -122,8 +124,9 @@ namespace SIMD_PARA{
 } // namespace SIMD_PARA
 
 namespace CUDA {
-    void dens_step(float* x, float* x0, float* u, float* v, float diff, float dt);
-    void vel_step(float* u, float* v, float* u0, float* v0, float visc, float dt);
+    extern uint32_t BSIZE;
+    extern uint32_t CELLSPERTHREAD;
+    void combined_step(float *u, float *v, float *u0, float *v0, float visc, float *x, float *x0, float diff, float dt);
     void add_density(int i, int j, float density, int diameter);
     void add_force(uint32_t i, uint32_t j, float xForce, float yForce);
     void project(float* u, float* v, float* p, float* div);
@@ -133,12 +136,14 @@ namespace CUDA {
     void add_source(float* x, float* s, float dt);
     void diffuse(uint32_t b, float* x, float* x0, float diff, float dt);
     void advect(uint32_t b, float* d, float* d0, float* u, float* v, float dt);
+    int allocate_data();
     int allocate_data_cuda_pinned(void** ptr, size_t size);
     void init_cuda_globals(uint32_t N, uint32_t dim, uint32_t bnd, uint32_t pad);
+    void full_address_test(float* test_in, float* test_out);
+    void dealloc_cuda_globals();
 } // namespace CUDA
 
 void Simulate(uint32_t optim_mode);
 void clear_data();
-int allocate_data_cuda();
 int allocate_data_simd();
 int allocate_data();
