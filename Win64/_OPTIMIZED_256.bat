@@ -1,1 +1,1 @@
-demo_render_windows.exe 4 256 1000
+demo_render_windows.exe 5 256 1000

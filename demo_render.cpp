@@ -562,7 +562,7 @@ int main ( int argc, char ** argv )
 {
 
 	if ( argc != 1 && argc != 4 && argc !=6) {
-		fprintf ( stderr, "Usage: \tdemo.exe <select implementation[0-5]> <resolution[int]> <iterations[int]>\n or:\tdemo.exe 5 <resolution[int]> <iterations[int]> <CUDA block size[int]> <CUDA cells per thread[int]>");
+		fprintf ( stderr, "Usage: \tdemo.exe <select implementation[0-5]> <resolution[int]> <iterations[int]>\n or:\tdemo.exe 5 <resolution[int]> <iterations[int]> <CUDA block width/height[int]> <CUDA cells per thread[int]>");
 		return 1;
 	}
 	profiling = false;
@@ -593,8 +593,8 @@ int main ( int argc, char ** argv )
 		optim_mode = atoi(argv[1]);
 		N = atoi(argv[2]);
 		iterations = atoi(argv[3]);
-		CUDA::BSIZE = 32;
-		CUDA::CELLSPERTHREAD = 4;
+		CUDA::BSIZE = 16;
+		CUDA::CELLSPERTHREAD = 1;
 	}
 
 	if(optim_mode==3||optim_mode==4){bnd = 8;}
@@ -641,7 +641,6 @@ int main ( int argc, char ** argv )
 
 	init_sfml(resolution);
 	GameLoop();
-
 
 	if(optim_mode==5){
 		CUDA::dealloc_cuda_globals();

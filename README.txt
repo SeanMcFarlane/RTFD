@@ -8,18 +8,19 @@ Global variables and indexing functions can be found in project.h
 
 LAUNCH OPTIONS: ./demo_render.exe [profiling mode (0,1)] [implementation (0,1,2,3)] [resolution] [iterations]
 Implementation options are as follows:
-1 - Base (IX)
-2 - Single-Core Optimized (ZIX)
-3 - SIMD (IX)
-4 - SIMD+Multithreaded (IX)
-
+0 - Base
+1 - Single-Core Optimized
+2 - Multithreaded Optimized
+3 - SIMD
+4 - SIMD+Multithreaded
+5 - CUDA
 
 REQUIRED PACKAGES: 
 libsfml-dev
 
-Linux is strongly recommended for testing this project.
+This project is compatible with both 64-bit Windows and Linux systems.
 
-An SFML-free version is included in the project, for when you don't need any GUI and just want to profile 
+An SFML-free executable is included in the project, useful when you don't need any GUI and just want to profile 
 performance. To use this version, execute demo_prof.exe instead.
 
 [1] Stam, Jos. (2003). Real-Time Fluid Dynamics for Games. 
