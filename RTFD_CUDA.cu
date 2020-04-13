@@ -2,7 +2,13 @@
 
 #define DEVICE_CHECK_OOB if(i < d_pad || i >= d_dim-d_pad || j < d_pad || j >= d_dim-d_pad) {printf("DEVICE BOUNDS ERROR: Cell (%i,%i) OOB at line %d\n", i,j, __LINE__);}
 #define INBOUNDS(i,j) (i>=d_pad && i<d_dim-d_pad && j>=d_pad && j<d_dim-d_pad)
-#define FOR_JOBS_IN_BOUNDS uint32_t i = (blockIdx.x*blockDim.x*d_CELLSPERTHREAD)+(threadIdx.x*d_CELLSPERTHREAD); uint32_t const j = blockIdx.y*blockDim.y+threadIdx.y; for (uint32_t jobnum = 0; jobnum < d_CELLSPERTHREAD; jobnum++) { if INBOUNDS(i,j) 
+
+#define FOR_JOBS_IN_BOUNDS \
+uint32_t i = (blockIdx.x*blockDim.x*d_CELLSPERTHREAD)+(threadIdx.x*d_CELLSPERTHREAD);\
+uint32_t const j = blockIdx.y*blockDim.y+threadIdx.y;\
+for (uint32_t jobnum = 0; jobnum < d_CELLSPERTHREAD; jobnum++) {\
+if INBOUNDS(i, j)
+
 #define END_JOBS i++; }	
 #define DIX(i,j) ((i)+(d_dim)*(j))
 
@@ -124,15 +130,7 @@ namespace CUDA { // CUDA implementation
 	void gpu_lin_solve(float* x, float* x0, const float a, const float c) {
 		FOR_JOBS_IN_BOUNDS { 
 			DEVICE_CHECK_OOB
-			const float left = x[DIX(i - 1, j)];
-			const float right = x[DIX(i + 1, j)];
-			const float above = x[DIX(i, j + 1)];
-			const float below = x[DIX(i, j - 1)];
-			const float sum = left + right + above + below;
-			const float prod = sum * a;
-			const float addOrig = prod + x0[DIX(i, j)];
-			const float result = addOrig / c;
-			x[DIX(i, j)] = result;
+			x[DIX(i, j)] = (x0[DIX(i, j)] + a * (x[DIX(i - 1, j)] + x[DIX(i + 1, j)] + x[DIX(i, j - 1)] + x[DIX(i, j + 1)])) / c;
 		} END_JOBS
 	}
 
@@ -163,65 +161,6 @@ namespace CUDA { // CUDA implementation
 			t0 = 1 - t1;
 			d_d[DIX(i, j)] = s0 * (t0 * d_d0[DIX(i0, j0)] + t1 * d_d0[DIX(i0, j1)]) +
 				s1 * (t0 * d_d0[DIX(i1, j0)] + t1 * d_d0[DIX(i1, j1)]);
-		} END_JOBS
-	}
-
-	__global__
-	void gpu_advect_velstep_u(float *d_u, float *d_u0, float *d_v0, const float dt){
-		uint32_t i0, j0, i1, j1;
-		float x, y, s0, t0, s1, t1, dt0;
-		FOR_JOBS_IN_BOUNDS { 
-			DEVICE_CHECK_OOB
-			dt0 = dt * d_N;
-			x = i - dt0 * d_u0[DIX(i, j)];
-			y = j - dt0 * d_v0[DIX(i, j)];
-			if (x < 0.5f)
-				x = 0.5f;
-			if (x > d_N + 0.5f)
-				x = d_N + 0.5f;
-			i0 = (int)x;
-			i1 = i0 + 1;
-			if (y < 0.5f)
-				y = 0.5f;
-			if (y > d_N + 0.5f)
-				y = d_N + 0.5f;
-			j0 = (int)y;
-			j1 = j0 + 1;
-			s1 = x - i0;
-			s0 = 1 - s1;
-			t1 = y - j0;
-			t0 = 1 - t1;
-			d_u[DIX(i, j)] = s0 * (t0 * d_u0[DIX(i0, j0)] + t1 * d_u0[DIX(i0, j1)]) +
-				s1 * (t0 * d_u0[DIX(i1, j0)] + t1 * d_u0[DIX(i1, j1)]);
-		} END_JOBS
-	}
-	__global__
-	void gpu_advect_velstep_v(float *d_v, float *d_u0, float *d_v0, const float dt){
-		uint32_t i0, j0, i1, j1;
-		float x, y, s0, t0, s1, t1, dt0;
-		FOR_JOBS_IN_BOUNDS { 
-			DEVICE_CHECK_OOB
-			dt0 = dt * d_N;
-			x = i - dt0 * d_u0[DIX(i, j)];
-			y = j - dt0 * d_v0[DIX(i, j)];
-			if (x < 0.5f)
-				x = 0.5f;
-			if (x > d_N + 0.5f)
-				x = d_N + 0.5f;
-			i0 = (int)x;
-			i1 = i0 + 1;
-			if (y < 0.5f)
-				y = 0.5f;
-			if (y > d_N + 0.5f)
-				y = d_N + 0.5f;
-			j0 = (int)y;
-			j1 = j0 + 1;
-			s1 = x - i0;
-			s0 = 1 - s1;
-			t1 = y - j0;
-			t0 = 1 - t1;
-			d_v[DIX(i, j)] = s0 * (t0 * d_v0[DIX(i0, j0)] + t1 * d_v0[DIX(i0, j1)]) +
-				s1 * (t0 * d_v0[DIX(i1, j0)] + t1 * d_v0[DIX(i1, j1)]);
 		} END_JOBS
 	}
 
@@ -293,8 +232,10 @@ namespace CUDA { // CUDA implementation
 		*/
 		gpuErrchk(cudaMemcpy(d_u, u, size, cudaMemcpyHostToDevice));
 		gpuErrchk(cudaMemcpy(d_v, v, size, cudaMemcpyHostToDevice));
+
 		gpuErrchk(cudaMemcpy(d_u0, u0, size, cudaMemcpyHostToDevice	));
 		gpuErrchk(cudaMemcpy(d_v0, v0, size, cudaMemcpyHostToDevice	));
+
 		gpuErrchk(cudaMemcpy(d_x, x, size, cudaMemcpyHostToDevice	));
 		gpuErrchk(cudaMemcpy(d_x0, x0, size, cudaMemcpyHostToDevice	));
 
@@ -310,9 +251,9 @@ namespace CUDA { // CUDA implementation
 		CUDA::project(d_u, d_v, d_u0, d_v0);
 		SWAP(d_u0, d_u);
 		SWAP(d_v0, d_v);
-		CUDA::gpu_advect_velstep_u<<<gridSize, threadCount>>>(d_u, d_u0, d_v0, dt);
+		CUDA::gpu_advect<<<gridSize, threadCount>>>(d_u, d_u0, d_u0, d_v0, dt);
 		CUDA::gpu_set_bnd<<<bx, BSIZE>>>(1, d_u);
-		CUDA::gpu_advect_velstep_v<<<gridSize, threadCount>>>(d_v, d_u0, d_v0, dt);
+		CUDA::gpu_advect<<<gridSize, threadCount>>>(d_v, d_v0, d_u0, d_v0, dt);
 		CUDA::gpu_set_bnd<<<bx, BSIZE>>>(2, d_v);
 		CUDA::project(d_u, d_v, d_u0, d_v0);
 
@@ -329,6 +270,7 @@ namespace CUDA { // CUDA implementation
 		/*
 		Return result to CPU memory
 		*/
+		
 		gpuErrchk(cudaMemcpy(u, d_u, size, cudaMemcpyDeviceToHost));
 		gpuErrchk(cudaMemcpy(v, d_v, size, cudaMemcpyDeviceToHost));
 		gpuErrchk(cudaMemcpy(x, d_x, size, cudaMemcpyDeviceToHost));
@@ -342,7 +284,7 @@ namespace CUDA { // CUDA implementation
 	//
 
 	__global__
-		void gpu_full_address_test(float* in, float* out) {
+	void gpu_full_address_test(float* in, float* out) {
 		FOR_JOBS_IN_BOUNDS { 
 			DEVICE_CHECK_OOB
 			float blue = ((blockIdx.x+blockIdx.y) % 2) * 1.0f;
@@ -353,7 +295,7 @@ namespace CUDA { // CUDA implementation
 	}
 
 	__host__
-		void full_address_test(float* in, float* out){
+	void full_address_test(float* in, float* out){
 		float *d_in, *d_out;
 		gpuErrchk(cudaMalloc((void**)&d_in, size));
 		gpuErrchk(cudaMalloc((void**)&d_out, size));
