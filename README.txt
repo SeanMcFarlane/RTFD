@@ -1,3 +1,4 @@
+Demonstration: https://www.youtube.com/watch?v=6nD7S7YMc8E
 This project was created based on the paper "Real-Time Fluid Dynamics for Games" by Jos Stam.[1]
 Code is a modified version of the sample code provided alongside the paper, which was adapted to use C++ and SFML rather than C and OpenGL.
 This was created for the purpose of testing optimization methods as part of my CSC485C coursework.
